@@ -9,7 +9,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exifr/dist/full.umd.js"></script>
     <style>
         :root {
             --bg-main: #4a5568;
@@ -19,6 +19,9 @@
             --text-main: #f7fafc;
             --text-label: #e2e8f0;
             --border-color: #4a5568;
+            /* アクセントカラー */
+            --accent-main: #38bdf8;
+            --accent-sub: #7dd3fc;
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -30,27 +33,38 @@
             display: flex; flex-direction: column; gap: 11px; box-shadow: 0 4px 25px rgba(0,0,0,0.5); overflow-y: auto;
             border: 1px solid var(--border-color); transition: background-color 0.3s;
         }
-        h2 { font-size: 12px; margin: 0 0 4px 0; color: #3182ce; text-transform: uppercase; letter-spacing: 0.05em; border-left: 3px solid #3182ce; padding-left: 6px; }
-        .btn {
-            background: #3182ce; color: white; border: none; padding: 9px;
-            border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center;
-            font-size: 11px; transition: background 0.2s; -webkit-appearance: none;
+        /* アコーディオン・ヘッダー */
+        .section-header { 
+            font-size: 12px; margin: 0 0 4px 0; color: var(--accent-main); 
+            text-transform: uppercase; letter-spacing: 0.05em; 
+            border-left: 3px solid var(--accent-main); padding-left: 6px; 
+            cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+            user-select: none; transition: color 0.3s, border-color 0.3s;
         }
-        .btn:hover { background: #2b6cb0; }
+        .section-header:hover { filter: brightness(1.2); }
+        .section-header .toggle-icon { font-size: 10px; transition: transform 0.2s; color: var(--text-label); }
+        .section-header.collapsed .toggle-icon { transform: rotate(-90deg); }
+        .section-content { transition: max-height 0.3s ease-out, opacity 0.2s; overflow: visible; display: flex; flex-direction: column; gap: 5px; }
+        .section-content.collapsed { display: none; }
+
+        .btn {
+            background: var(--accent-main); color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            border: none; padding: 9px; border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center;
+            font-size: 11px; transition: filter 0.2s, background 0.3s; -webkit-appearance: none;
+        }
+        .btn:hover { filter: brightness(0.85); }
         .btn-danger { background: #e53e3e; }
-        .btn-danger:hover { background: #c53030; }
         .btn-download { background: #10b981; }
-        .btn-download:hover { background: #059669; }
         input[type="file"] { display: none; }
         
         .control-group { display: flex; flex-direction: column; gap: 5px; background: var(--bg-slot); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); }
-        .control-group-scroll { max-height: 220px; overflow-y: auto; padding-right: 4px; }
+        .control-group-scroll { max-height: 250px; overflow-y: auto; padding-right: 4px; }
         .control-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-label); }
         .control-row input[type="range"], .control-row select { width: 140px; }
         
         .ratio-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 4px; }
         .ratio-btn { background: var(--border-color); color: var(--text-main); border: none; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 10px; }
-        .ratio-btn.active { background: #3182ce; color: white; }
+        .ratio-btn.active { background: var(--accent-main); color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
 
         .history-container { display: flex; flex-wrap: wrap; gap: 4px; background: var(--bg-input); padding: 6px; border-radius: 6px; max-height: 60px; overflow-y: auto; border: 1px solid var(--border-color); }
         .history-chip { background: var(--border-color); color: var(--text-main); font-size: 10px; padding: 3px 6px; border-radius: 4px; display: flex; align-items: center; gap: 6px; cursor: pointer; }
@@ -87,9 +101,10 @@
             position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8);
             display: none; justify-content: center; align-items: center; flex-direction: column; gap: 10px; z-index: 999; border-radius: 12px;
         }
-        .spinner { width: 40px; height: 40px; border: 4px solid #3182ce; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+        .spinner { width: 40px; height: 40px; border: 4px solid var(--accent-main); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* スマホ向けレイアウト（プレビュー上部固定） */
         @media (max-width: 768px) {
             body { flex-direction: column-reverse; height: 100dvh; overflow: hidden; padding: 0; gap: 0; }
             .main-container { width: 100%; height: 45dvh; min-height: auto; box-sizing: border-box; border-radius: 0; border-width: 0 0 1px 0; flex-shrink: 0; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
@@ -102,12 +117,12 @@
         .control-group-scroll { -webkit-overflow-scrolling: touch; }
         .color-slots { -webkit-overflow-scrolling: touch; }
         input[type="range"] { -webkit-appearance: none; height: 4px; border-radius: 2px; background: #4a5568; outline: none; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #3182ce; cursor: pointer; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-main); cursor: pointer; }
         select { -webkit-appearance: none; }
         .btn { -webkit-appearance: none; touch-action: manipulation; }
         .slot { touch-action: none; }
         .slot.touch-dragging { opacity: 0.5; background: #475569; transform: scale(1.03); box-shadow: 0 8px 20px rgba(0,0,0,0.5); z-index: 999; }
-        .slot.touch-drag-over { border-color: #3182ce; background: #2b4a7a; }
+        .slot.touch-drag-over { border-color: var(--accent-main); background: #2b4a7a; }
         #iosShareBtn { display: none; background: #3b82f6; color: white; border: none; padding: 9px; border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center; font-size: 11px; width: 100%; margin-top: 5px; -webkit-appearance: none; touch-action: manipulation; }
         #iosShareBtn:hover { background: #2563eb; }
     </style>
@@ -116,357 +131,397 @@
 
     <div class="panel">
         <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-            <h2 style="margin:0;">UIテーマ設定</h2>
-            <select id="uiThemeSelect" class="select-layout" style="width:100px;">
-                <option value="black">ブラック</option>
-                <option value="gray" selected>ネイビー</option>
-                <option value="white">ホワイト</option>
-            </select>
+            <h2 style="margin:0; border:none; padding:0; color:var(--text-main);">🎨 UI 設定</h2>
+            <div style="display:flex; gap:6px;">
+                <select id="accentColorSelect" class="select-layout" style="width:75px;">
+                    <option value="blue" selected>シアン</option>
+                    <option value="emerald">グリーン</option>
+                    <option value="amber">オレンジ</option>
+                    <option value="pink">ピンク</option>
+                    <option value="purple">パープル</option>
+                </select>
+                <select id="uiThemeSelect" class="select-layout" style="width:75px;">
+                    <option value="black">ブラック</option>
+                    <option value="gray" selected>ネイビー</option>
+                    <option value="white">ホワイト</option>
+                </select>
+            </div>
         </div>
 
         <div>
-            <h2>1. 画像の読み込み</h2>
-            <label class="btn" style="display:block;">
-                画像を選択
-                <input type="file" id="imageInput" accept="image/*,.heic,.heif">
-            </label>
+            <h2 class="section-header">1. 画像の読み込み<span class="toggle-icon">▼</span></h2>
+            <div class="section-content">
+                <label class="btn" style="display:block;">
+                    画像を選択
+                    <input type="file" id="imageInput" accept="image/*,.heic,.heif">
+                </label>
+            </div>
         </div>
 
         <div id="presetControls">
-            <h2>2. ユーザープリセット管理</h2>
-            <div class="control-group" style="gap:6px;">
-                <div class="control-row">
-                    <label>プリセット:</label>
-                    <select id="presetSelect" class="select-layout" style="width:140px;"><option value="default">— デフォルト —</option></select>
-                    <button class="btn btn-danger" id="deletePresetBtn" style="padding: 4px 8px;">削除</button>
-                </div>
-                <div style="display:flex; gap:6px; margin-top:2px;">
-                    <input type="text" id="newPresetName" class="input-dark" style="flex:1;" placeholder="新しい名前を入力">
-                    <button class="btn" id="savePresetBtn" style="background:#553c9a; padding:6px 10px;">保存</button>
+            <h2 class="section-header collapsed">2. ユーザープリセット管理<span class="toggle-icon">▼</span></h2>
+            <div class="section-content collapsed">
+                <div class="control-group" style="gap:6px;">
+                    <div class="control-row">
+                        <label>プリセット:</label>
+                        <select id="presetSelect" class="select-layout" style="width:140px;"><option value="default">— デフォルト —</option></select>
+                        <button class="btn btn-danger" id="deletePresetBtn" style="padding: 4px 8px;">削除</button>
+                    </div>
+                    <div style="display:flex; gap:6px; margin-top:2px;">
+                        <input type="text" id="newPresetName" class="input-dark" style="flex:1;" placeholder="新しい名前を入力">
+                        <button class="btn" id="savePresetBtn" style="padding:6px 10px;">保存</button>
+                    </div>
                 </div>
             </div>
         </div>
 
         <div id="cropperControls" style="display:none;">
-            <h2>3. 比率・サイズとトリミング</h2>
-            <p style="font-size:10px; color:#94a3b8; margin:0 0 4px 0;">※画像上でスクロール/ピンチで拡大縮小が可能です。</p>
-            <div class="ratio-presets">
-                <button class="ratio-btn active" data-w="4" data-h="5">4 : 5</button>
-                <button class="ratio-btn" data-w="1" data-h="1">1 : 1</button>
-                <button class="ratio-btn" data-w="16" data-h="9">16 : 9</button>
-                <button class="ratio-btn" data-w="2" data-h="3">2 : 3</button>
-            </div>
-            <div class="control-group">
-                <div class="control-row">
-                    <label>数値指定:</label>
-                    <div class="aspect-input-group" style="display:flex; align-items:center; gap:4px;">
-                        <input type="number" id="aspectW" class="input-dark" value="4" style="width:36px; text-align:center; padding:3px;">
-                        <span>:</span>
-                        <input type="number" id="aspectH" class="input-dark" value="5" style="width:36px; text-align:center; padding:3px;">
-                        <button class="btn" id="swapAspectBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568;">⇄ 切替</button>
-                        <button class="btn" id="setAspectBtn" style="padding: 3px 6px; font-size: 10px;">適用</button>
+            <h2 class="section-header">3. 比率・サイズとトリミング<span class="toggle-icon">▼</span></h2>
+            <div class="section-content">
+                <p style="font-size:10px; color:#94a3b8; margin:0 0 4px 0;">※画像上でスクロール/ピンチで拡大縮小が可能です。</p>
+                <div class="ratio-presets">
+                    <button class="ratio-btn active" data-w="4" data-h="5">4 : 5</button>
+                    <button class="ratio-btn" data-w="1" data-h="1">1 : 1</button>
+                    <button class="ratio-btn" data-w="16" data-h="9">16 : 9</button>
+                    <button class="ratio-btn" data-w="2" data-h="3">2 : 3</button>
+                </div>
+                <div class="control-group">
+                    <div class="control-row">
+                        <label>数値指定:</label>
+                        <div class="aspect-input-group" style="display:flex; align-items:center; gap:4px;">
+                            <input type="number" id="aspectW" class="input-dark" value="4" style="width:36px; text-align:center; padding:3px;">
+                            <span>:</span>
+                            <input type="number" id="aspectH" class="input-dark" value="5" style="width:36px; text-align:center; padding:3px;">
+                            <button class="btn" id="swapAspectBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568;">⇄ 切替</button>
+                            <button class="btn" id="setAspectBtn" style="padding: 3px 6px; font-size: 10px;">適用</button>
+                        </div>
+                    </div>
+                    <button class="btn" id="setFreeAspectBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568; margin-top:2px; width:100%;">フリーサイズで切り抜く</button>
+                    <div style="font-size:10px; color:var(--text-label); margin-top:4px;">手入力比率の履歴:</div>
+                    <div class="history-container" id="ratioHistoryArea"></div>
+                </div>
+                <div class="control-group" style="margin-top:5px;">
+                    <div class="control-row">
+                        <label>再トリミング時にデザインを初期化する:</label>
+                        <input type="checkbox" id="chkResetOnRecrop" checked>
                     </div>
                 </div>
-                <button class="btn" id="setFreeAspectBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568; margin-top:2px; width:100%;">フリーサイズで切り抜く</button>
-                <div style="font-size:10px; color:var(--text-label); margin-top:4px;">手入力比率の履歴:</div>
-                <div class="history-container" id="ratioHistoryArea"></div>
+                <button class="btn" id="applyCropBtn" style="width:100%; margin-top:8px;">スタジオ画面へ進む</button>
             </div>
-            
-            <div class="control-group" style="margin-top:5px;">
-                <div class="control-row">
-                    <label>再トリミング時にデザインを初期化する:</label>
-                    <input type="checkbox" id="chkResetOnRecrop" checked>
-                </div>
-            </div>
-
-            <button class="btn" id="applyCropBtn" style="width:100%; margin-top:8px;">スタジオ画面へ進む</button>
         </div>
 
         <div id="paletteControls" style="display:none;">
-            <h2>4. カラーパレット構成</h2>
-            <div class="control-group" style="gap:6px;">
-                <div class="control-row">
-                    <label>抽出カラー数:</label>
-                    <select id="colorCountSelect" class="select-layout" style="width:70px;"><option value="5" selected>5色</option><option value="6">6色</option><option value="7">7色</option><option value="8">8色</option><option value="9">9色</option><option value="10">10色</option></select>
-                </div>
-                <button class="btn" id="palettePatternBtn" style="background: #4a5568; font-size:11px; padding:6px;">パレット配色を別の候補に切り替える</button>
-                <div class="control-row" style="margin-top:4px;">
-                    <label style="color:#3182ce; font-weight:bold;">🎨 パレットを描画する:</label>
-                    <input type="checkbox" id="chkDrawPalette" checked>
-                </div>
-                <div class="control-row">
-                    <label style="color:#e53e3e; font-weight:bold;">📍 抽出元マーカー（ドラッグで移動可）:</label>
-                    <input type="checkbox" id="chkShowExtractionMarkers">
-                </div>
-                <div class="control-row" id="markerNumberRow" style="display:none;">
-                    <label>マーカーの数字表示:</label>
-                    <input type="checkbox" id="chkMarkerNumber" checked>
-                </div>
-                <div class="control-row" id="markerSizeRow" style="display:none;">
-                    <label>マーカーサイズ:</label>
-                    <input type="range" id="markerSizeRange" min="4" max="80" value="10" style="width:140px;">
-                </div>
-            </div>
-
-            <h2>5. パレット並び替え & 手動スポイト</h2>
-            <div class="color-slots" id="sortableContainer"></div>
-            <button class="btn" id="recropBtn" style="width:100%; background:#475569; padding:5px; font-size:11px; margin-top:4px;">トリミングをし直す</button>
-
-            <h2 style="margin-top:8px;">6. デザイン調整コントロール</h2>
-            <div class="control-group control-group-scroll">
-                <div class="control-row">
-                    <label>画像のサイズ縮小・拡大:</label>
-                    <div style="display:flex; gap:4px; align-items:center;">
-                        <input type="range" id="imageScaleRange" min="10" max="200" value="100" style="width:80px;">
-                        <button class="btn" id="resetImageScaleBtn" style="padding: 3px 6px; font-size: 10px;">リセット</button>
-                    </div>
-                </div>
-                <div class="control-row"><label>パレット位置:</label>
-                    <select id="palettePosition" class="select-layout">
-                        <optgroup label="── 画像の外側 ──">
-                            <option value="right">右側</option>
-                            <option value="left">左側</option>
-                            <option value="bottom">下部</option>
-                            <option value="top">上部</option>
-                            <option value="left-right">左右に配置</option>
-                            <option value="top-bottom">上下に配置</option>
-                        </optgroup>
-                        <optgroup label="── 画像に重ねる ──">
-                            <option value="overlay-bottom">重ねる：下端</option>
-                            <option value="overlay-top">重ねる：上端</option>
-                            <option value="overlay-left">重ねる：左端</option>
-                            <option value="overlay-right">重ねる：右端</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="control-row"><label>パレットの太さ:</label><select id="paletteThickness" class="select-layout"><option value="small">小</option><option value="medium" selected>中</option><option value="large">大</option></select></div>
-                <div class="control-row" id="paletteGapRow"><label>パレットとの距離:</label><input type="range" id="paletteGapRange" min="0" max="100" value="20"></div>
-                <div class="control-row"><label>カラー同士の間隔:</label><input type="range" id="colorSpacingRange" min="0" max="40" value="0"></div>
-                <div class="control-row"><label>外周の白枠(太さ):</label><input type="range" id="whiteBorderRange" min="0" max="60" value="0"></div>
-
-                <div id="overlayControls" style="display:none; flex-direction:column; gap:5px; border-top:1px solid var(--border-color); padding-top:6px; margin-top:4px;">
-                    <div style="font-size:10px; color:#a78bfa; font-weight:bold; margin-bottom:2px;">🖼 重ねるモード設定</div>
+            <h2 class="section-header">4. カラーパレット構成<span class="toggle-icon">▼</span></h2>
+            <div class="section-content">
+                <div class="control-group" style="gap:6px;">
                     <div class="control-row">
-                        <label>パレット不透明度:</label>
-                        <input type="range" id="overlayOpacityRange" min="20" max="100" value="92" style="width:140px;">
+                        <label>抽出カラー数:</label>
+                        <select id="colorCountSelect" class="select-layout" style="width:70px;"><option value="5" selected>5色</option><option value="6">6色</option><option value="7">7色</option><option value="8">8色</option><option value="9">9色</option><option value="10">10色</option></select>
+                    </div>
+                    <button class="btn" id="palettePatternBtn" style="background: var(--bg-input); color:var(--text-main); border:1px solid var(--border-color); font-size:11px; padding:6px;">パレット配色を別の候補に切り替える</button>
+                    <div class="control-row" style="margin-top:4px;">
+                        <label style="color:var(--accent-main); font-weight:bold;">🎨 パレットを描画する:</label>
+                        <input type="checkbox" id="chkDrawPalette" checked>
                     </div>
                     <div class="control-row">
-                        <label>パレット幅（画像比）:</label>
-                        <input type="range" id="overlayWidthRange" min="20" max="100" value="100" style="width:140px;">
+                        <label style="color:#e53e3e; font-weight:bold;">📍 抽出元マーカー（ドラッグで移動可）:</label>
+                        <input type="checkbox" id="chkShowExtractionMarkers">
                     </div>
-                    <div class="control-row">
-                        <label>パレット厚み比率:</label>
-                        <input type="range" id="overlayThicknessRange" min="3" max="30" value="10" style="width:140px;">
+                    <div class="control-row" id="markerNumberRow" style="display:none;">
+                        <label>マーカーの数字表示:</label>
+                        <input type="checkbox" id="chkMarkerNumber" checked>
                     </div>
-                    <div class="control-row">
-                        <label>パレット内側余白:</label>
-                        <input type="range" id="overlayInsetRange" min="0" max="60" value="0" style="width:140px;">
-                    </div>
-                    <div class="control-row" style="background:var(--bg-input); padding:5px; border-radius:4px;">
-                        <label style="color:#10b981; font-weight:bold;">📦 シンプル書き出しモード:</label>
-                        <input type="checkbox" id="chkSimpleMode">
+                    <div class="control-row" id="markerSizeRow" style="display:none;">
+                        <label>マーカーサイズ:</label>
+                        <input type="range" id="markerSizeRange" min="4" max="80" value="10" style="width:140px;">
                     </div>
                 </div>
             </div>
 
-            <h2>7. カラーコード表示設定</h2>
-            <div class="control-group">
-                <div class="control-row">
-                    <label>カラーコード表示:</label>
-                    <select id="showHexSelect" class="select-layout" style="width:140px;"><option value="none" selected>非表示</option><option value="show">パレット上に表示</option></select>
-                </div>
-                <div id="hexTextControls" style="display:none; flex-direction:column; gap:5px;">
+            <h2 class="section-header collapsed" style="margin-top:8px;">5. パレット並び替え & 手動スポイト<span class="toggle-icon">▼</span></h2>
+            <div class="section-content collapsed">
+                <div class="color-slots" id="sortableContainer"></div>
+                <button class="btn" id="recropBtn" style="width:100%; background:#475569; padding:5px; font-size:11px; margin-top:4px;">トリミングをし直す</button>
+            </div>
+
+            <h2 class="section-header" style="margin-top:8px;">6. デザイン配置 ＆ マスク設定<span class="toggle-icon">▼</span></h2>
+            <div class="section-content">
+                <div class="control-group control-group-scroll">
                     <div class="control-row">
-                        <label>フォント:</label>
-                        <select id="hexFontSelect" class="select-layout" style="width:140px;">
-                            <option value="Helvetica" selected>Helvetica</option>
-                            <option value="Times New Roman">Times New Roman</option>
-                            <option value="Georgia">Georgia</option>
-                            <option value="Futura">Futura</option>
-                            <option value="Hiragino Kaku Gothic ProN">ヒラギノゴシック</option>
-                            <option value="custom">— 手動指定 —</option>
+                        <label>画像のサイズ縮小・拡大:</label>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <input type="range" id="imageScaleRange" min="10" max="200" value="100" style="width:80px;">
+                            <button class="btn" id="resetImageScaleBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568;">R</button>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label>画像の位置 (X / Y):</label>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <input type="range" id="imageOffsetXRange" min="-100" max="100" value="0" style="width:40px;" title="X軸">
+                            <input type="range" id="imageOffsetYRange" min="-100" max="100" value="0" style="width:40px;" title="Y軸">
+                            <button class="btn" id="resetImagePosBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568;">R</button>
+                        </div>
+                    </div>
+                    <div class="control-row" style="background:var(--bg-input); padding:6px; border-radius:4px; margin-top:4px;">
+                        <label style="color:var(--accent-main); font-weight:bold;">👻 画像部分を透過くり抜き (非表示):</label>
+                        <input type="checkbox" id="chkHideImage">
+                    </div>
+                    
+                    <hr style="border:0; border-top:1px solid var(--border-color); margin:8px 0;">
+
+                    <div class="control-row"><label>パレット位置:</label>
+                        <select id="palettePosition" class="select-layout">
+                            <optgroup label="── 画像の外側 ──">
+                                <option value="right">右側</option>
+                                <option value="left">左側</option>
+                                <option value="bottom">下部</option>
+                                <option value="top">上部</option>
+                                <option value="left-right">左右に配置</option>
+                                <option value="top-bottom">上下に配置</option>
+                            </optgroup>
+                            <optgroup label="── 画像に重ねる ──">
+                                <option value="overlay-bottom">重ねる：下端</option>
+                                <option value="overlay-top">重ねる：上端</option>
+                                <option value="overlay-left">重ねる：左端</option>
+                                <option value="overlay-right">重ねる：右端</option>
+                            </optgroup>
                         </select>
                     </div>
-                    <div class="control-row" id="hexFontNameRow" style="display:none;">
-                        <label>手動名:</label>
-                        <input type="text" id="hexFontNameInput" class="input-dark" value="Helvetica" style="width:130px;">
+                    <div class="control-row"><label>パレットの太さ:</label><select id="paletteThickness" class="select-layout"><option value="small">小</option><option value="medium" selected>中</option><option value="large">大</option></select></div>
+                    <div class="control-row" id="paletteGapRow"><label>パレットとの距離:</label><input type="range" id="paletteGapRange" min="0" max="100" value="20"></div>
+                    <div class="control-row"><label>カラー同士の間隔:</label><input type="range" id="colorSpacingRange" min="0" max="40" value="0"></div>
+                    <div class="control-row"><label>外周の白枠(太さ):</label><input type="range" id="whiteBorderRange" min="0" max="60" value="0"></div>
+
+                    <div id="overlayControls" style="display:none; flex-direction:column; gap:5px; border-top:1px solid var(--border-color); padding-top:6px; margin-top:4px;">
+                        <div style="font-size:10px; color:var(--accent-sub); font-weight:bold; margin-bottom:2px;">🖼 重ねるモード設定</div>
+                        <div class="control-row"><label>パレット不透明度:</label><input type="range" id="overlayOpacityRange" min="20" max="100" value="92" style="width:140px;"></div>
+                        <div class="control-row"><label>パレット幅（画像比）:</label><input type="range" id="overlayWidthRange" min="20" max="100" value="100" style="width:140px;"></div>
+                        <div class="control-row"><label>パレット厚み比率:</label><input type="range" id="overlayThicknessRange" min="3" max="30" value="10" style="width:140px;"></div>
+                        <div class="control-row"><label>パレット内側余白:</label><input type="range" id="overlayInsetRange" min="0" max="60" value="0" style="width:140px;"></div>
+                        <div class="control-row" style="background:var(--bg-input); padding:5px; border-radius:4px;">
+                            <label style="color:#10b981; font-weight:bold;">📦 シンプル書き出しモード:</label>
+                            <input type="checkbox" id="chkSimpleMode">
+                        </div>
                     </div>
+                </div>
+            </div>
+
+            <h2 class="section-header collapsed" style="margin-top:8px;">7. カラーコード表示設定<span class="toggle-icon">▼</span></h2>
+            <div class="section-content collapsed">
+                <div class="control-group">
                     <div class="control-row">
-                        <label>テキストサイズ(割合):</label>
-                        <input type="range" id="hexFontSizeRange" min="5" max="50" value="22">
+                        <label>カラーコード表示:</label>
+                        <select id="showHexSelect" class="select-layout" style="width:140px;"><option value="none" selected>非表示</option><option value="show">パレット上に表示</option></select>
                     </div>
+                    <div id="hexTextControls" style="display:none; flex-direction:column; gap:5px;">
+                        <div class="control-row">
+                            <label>フォント:</label>
+                            <select id="hexFontSelect" class="select-layout" style="width:140px;">
+                                <option value="Helvetica" selected>Helvetica</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Georgia">Georgia</option>
+                                <option value="Futura">Futura</option>
+                                <option value="Hiragino Kaku Gothic ProN">ヒラギノゴシック</option>
+                                <option value="custom">— 手動指定 —</option>
+                            </select>
+                        </div>
+                        <div class="control-row" id="hexFontNameRow" style="display:none;">
+                            <label>手動名:</label>
+                            <input type="text" id="hexFontNameInput" class="input-dark" value="Helvetica" style="width:130px;">
+                        </div>
+                        <div class="control-row">
+                            <label>テキストサイズ(割合):</label>
+                            <input type="range" id="hexFontSizeRange" min="5" max="50" value="22">
+                        </div>
+                        <div class="control-row">
+                            <label>文字間隔:</label>
+                            <input type="range" id="hexLetterSpacingRange" min="0" max="15" value="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h2 class="section-header collapsed" style="margin-top:8px;">8. 背景デザイン設定<span class="toggle-icon">▼</span></h2>
+            <div class="section-content collapsed">
+                <div class="control-group">
                     <div class="control-row">
-                        <label>文字間隔:</label>
-                        <input type="range" id="hexLetterSpacingRange" min="0" max="15" value="1">
+                        <label>背景モード:</label>
+                        <select id="bgModeSelect" class="select-layout">
+                            <option value="gradient" selected>グラデーション（パレット色）</option>
+                            <option value="pixel">ピクセル（モザイク）</option>
+                            <option value="white">ホワイト</option>
+                            <option value="black">ブラック</option>
+                            <option value="dropper">スポイト / 任意指定</option>
+                            <option value="none">背景なし（透過）</option>
+                        </select>
+                    </div>
+                    <div class="control-row" id="bgDropperRow" style="display:none;">
+                        <label>任意カラー:</label>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <input type="color" id="bgManualColorInput" value="#ffffff">
+                            <button class="btn" id="bgDropperBtn" style="padding:3px 6px; font-size:10px;">スポイト</button>
+                        </div>
+                    </div>
+                    <div class="control-row" id="bgGradientAngleRow">
+                        <label>グラデーションの角度:</label>
+                        <input type="range" id="bgGradientAngleRange" min="0" max="360" value="180">
+                    </div>
+                    <div class="control-row" id="densitySizeRow" style="display:none;">
+                        <label>ピクセルの大きさ:</label>
+                        <input type="range" id="densitySizeRange" min="10" max="80" value="35">
+                    </div>
+                    <button class="btn" id="bgShuffleBtn" style="width:100%; background: #475569; font-size:11px; padding:6px; margin-top:2px;">背景パターンを再生成 / 切替</button>
+                </div>
+            </div>
+
+            <h2 class="section-header" style="margin-top:8px;">9. タイポグラフィ設定<span class="toggle-icon">▼</span></h2>
+            <div class="section-content">
+                <div class="control-group control-group-scroll">
+                    <div class="control-row" style="background:var(--bg-input); padding:5px; border-radius:4px; margin-bottom:4px;">
+                        <label style="color:var(--accent-sub); font-weight:bold;">💬 コメントフォント:</label>
+                        <select id="customFontSelect" class="select-layout" style="width:110px;">
+                            <option value="Helvetica" selected>Helvetica</option><option value="Times New Roman">Times New Roman</option><option value="Georgia">Georgia</option><option value="Futura">Futura</option>
+                            <option value="Hiragino Mincho ProN, YuMincho">ヒラギノ明朝 / 遊明朝</option><option value="Hiragino Kaku Gothic ProN">ヒラギノゴシック</option><option value="custom">— 手動指定 —</option>
+                        </select>
+                    </div>
+                    <div class="control-row" id="customFontNameRow" style="display:none;"><label>手動名:</label><input type="text" id="customFontNameInput" class="input-dark" value="Helvetica" style="width:130px;"></div>
+
+                    <div class="control-row" style="background:var(--bg-input); padding:5px; border-radius:4px; margin-bottom:4px;">
+                        <label style="color:var(--accent-sub); font-weight:bold;">📷 メタデータフォント:</label>
+                        <select id="exifFontSelect" class="select-layout" style="width:110px;">
+                            <option value="Helvetica" selected>Helvetica</option><option value="Times New Roman">Times New Roman</option><option value="Georgia">Georgia</option><option value="Futura">Futura</option>
+                            <option value="Hiragino Mincho ProN, YuMincho">ヒラギノ明朝 / 遊明朝</option><option value="Hiragino Kaku Gothic ProN">ヒラギノゴシック</option><option value="custom">— 手動指定 —</option>
+                        </select>
+                    </div>
+                    <div class="control-row" id="exifFontNameRow" style="display:none;"><label>手動名:</label><input type="text" id="exifFontNameInput" class="input-dark" value="Helvetica" style="width:130px;"></div>
+
+                    <div class="control-row">
+                        <label>テキストの横揃え:</label>
+                        <select id="textAlignSelect" class="select-layout" style="width:140px;">
+                            <option value="auto" selected>自動 (配置で変動)</option>
+                            <option value="left">左揃え</option>
+                            <option value="center">中央揃え</option>
+                            <option value="right">右揃え</option>
+                        </select>
+                    </div>
+
+                    <div class="control-row"><label>メタデータの文字サイズ:</label><input type="range" id="exifFontSizeRange" min="10" max="50" value="20"></div>
+                    <div class="control-row"><label>コメントの横間隔:</label><input type="range" id="customLetterSpacingRange" min="0" max="15" value="1"></div>
+                    <div class="control-row"><label>メタデータの横間隔:</label><input type="range" id="exifLetterSpacingRange" min="0" max="15" value="1"></div>
+                    <div class="control-row"><label>テキスト全体の不透明度:</label><input type="range" id="textOpacityRange" min="10" max="100" value="85"></div>
+                    <div class="control-row">
+                        <label>テキストの色調:</label>
+                        <select id="textColorTypeSelect" class="select-layout" style="width:140px;">
+                            <option value="white" selected>ホワイト</option>
+                            <option value="black">ブラック</option>
+                            <option value="gray">グレー</option>
+                            <option value="dropper">スポイト / 任意指定</option>
+                            <option value="gradient">パレット・グラデーション</option>
+                        </select>
+                    </div>
+                    <div class="control-row" id="textCustomColorRow" style="display:none;">
+                        <label>任意カラー選択:</label>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <input type="color" id="textManualColorInput" value="#ffffff">
+                            <button class="btn" id="textDropperBtn" style="padding:3px 6px; font-size:10px; background:var(--border-color);">スポイト</button>
+                        </div>
+                    </div>
+
+                    <div class="control-row">
+                        <label>テキストの縁取り(白黒):</label>
+                        <select id="textStrokeColorSelect" class="select-layout" style="width:140px;">
+                            <option value="none" selected>なし</option><option value="white">ホワイト</option><option value="black">ブラック</option>
+                        </select>
+                    </div>
+                    <div class="control-row" id="textStrokeWidthRow" style="display:none;"><label>縁取りの太さ:</label><input type="range" id="textStrokeWidthRange" min="1" max="20" value="4"></div>
+                    <div class="control-row"><label>ドロップシャドウの濃さ:</label><input type="range" id="textShadowOpacityRange" min="0" max="100" value="45"></div>
+                    <div class="control-row"><label>ドロップシャドウのぼかし:</label><input type="range" id="textShadowBlurRange" min="0" max="50" value="6"></div>
+                    <div class="control-row"><label>テキスト間の縦間隔:</label><input type="range" id="textLineSpacingRange" min="10" max="60" value="25"></div>
+                </div>
+
+                <div class="text-toggle-list">
+                    <div style="color:var(--accent-sub); font-weight:bold; margin-bottom:4px;">💬 自由コメント（最大3つ）</div>
+                    
+                    <div class="text-toggle-item">
+                        <input type="checkbox" id="chkCustomText1" checked><label>1:</label>
+                        <input type="range" id="sizeCustom1" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
+                        <input type="checkbox" id="chkVert1" style="margin-left:4px;"><label>縦</label>
+                    </div>
+                    <input type="text" id="customTextInput1" class="text-edit-input" value="PHOTO ARTWORK">
+                    
+                    <div class="text-toggle-item">
+                        <input type="checkbox" id="chkCustomText2"><label>2:</label>
+                        <input type="range" id="sizeCustom2" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
+                        <input type="checkbox" id="chkVert2" style="margin-left:4px;"><label>縦</label>
+                    </div>
+                    <input type="text" id="customTextInput2" class="text-edit-input" value="">
+                    
+                    <div class="text-toggle-item">
+                        <input type="checkbox" id="chkCustomText3"><label>3:</label>
+                        <input type="range" id="sizeCustom3" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
+                        <input type="checkbox" id="chkVert3" style="margin-left:4px;"><label>縦</label>
+                    </div>
+                    <input type="text" id="customTextInput3" class="text-edit-input" value="">
+                    
+                    <hr style="border:0; border-top:1px solid var(--border-color); margin:8px 0;">
+                    
+                    <div class="text-toggle-item" style="margin-top:6px;">
+                        <input type="checkbox" id="chkExifGroup" checked>
+                        <label style="color:var(--accent-sub); font-weight:bold;">📷 カメラメタデータ（ドラッグ連動）</label>
+                    </div>
+                    <div class="text-toggle-item"><input type="checkbox" id="chkCamera" checked><label>カメラ名:</label></div>
+                    <input type="text" id="cameraTextInput" class="text-edit-input" placeholder="カメラ名">
+                    <div class="text-toggle-item"><input type="checkbox" id="chkLens" checked><label>レンズ名:</label></div>
+                    <input type="text" id="lensTextInput" class="text-edit-input" placeholder="レンズ名">
+                    <div class="text-toggle-item"><input type="checkbox" id="chkSettings" checked><label>撮影設定:</label></div>
+                    <input type="text" id="settingsTextInput" class="text-edit-input" placeholder="シャッター速度 / F値 / ISO">
+                    <div class="text-toggle-item"><input type="checkbox" id="chkDate" checked><label>撮影日時:</label></div>
+                    <input type="text" id="dateTextInput" class="text-edit-input" placeholder="撮影日時">
+
+                    <hr style="border:0; border-top:1px solid var(--border-color); margin:8px 0;">
+
+                    <div class="text-toggle-item" style="margin-top:6px;">
+                        <input type="checkbox" id="chkLocationGroup">
+                        <label style="color:var(--accent-sub); font-weight:bold;">📍 位置情報テキスト</label>
+                    </div>
+                    <div id="locationGroupFields" style="display:none;">
+                        <div class="text-toggle-item"><input type="checkbox" id="chkLocation1" checked><label>位置情報 1:</label></div>
+                        <input type="text" id="locationTextInput1" class="text-edit-input" placeholder="国名 / 地名など">
+                        <div class="text-toggle-item"><input type="checkbox" id="chkLocation2"><label>位置情報 2:</label></div>
+                        <input type="text" id="locationTextInput2" class="text-edit-input" placeholder="住所 / スポット名など">
                     </div>
                 </div>
-            </div>
-
-            <h2>8. 背景デザイン設定</h2>
-            <div class="control-group">
-                <div class="control-row">
-                    <label>背景モード:</label>
-                    <select id="bgModeSelect" class="select-layout">
-                        <option value="gradient" selected>グラデーション（パレット色）</option>
-                        <option value="pixel">ピクセル（モザイク）</option>
-                        <option value="white">ホワイト</option>
-                        <option value="black">ブラック</option>
-                        <option value="dropper">スポイト / 任意指定</option>
-                        <option value="none">背景なし（透過）</option>
-                    </select>
-                </div>
-                <div class="control-row" id="bgDropperRow" style="display:none;">
-                    <label>任意カラー:</label>
-                    <div style="display:flex; gap:4px; align-items:center;">
-                        <input type="color" id="bgManualColorInput" value="#ffffff">
-                        <button class="btn" id="bgDropperBtn" style="padding:3px 6px; font-size:10px;">スポイト</button>
-                    </div>
-                </div>
-                <div class="control-row" id="bgGradientAngleRow">
-                    <label>グラデーションの角度:</label>
-                    <input type="range" id="bgGradientAngleRange" min="0" max="360" value="180">
-                </div>
-                <div class="control-row" id="densitySizeRow" style="display:none;">
-                    <label>ピクセルの大きさ:</label>
-                    <input type="range" id="densitySizeRange" min="10" max="80" value="35">
-                </div>
-                <button class="btn" id="bgShuffleBtn" style="width:100%; background: #475569; font-size:11px; padding:6px; margin-top:2px;">背景パターンを再生成 / 切替</button>
-            </div>
-
-            <h2>9. タイポグラフィ ＆ 高度カラー設定</h2>
-            <div class="control-group control-group-scroll">
-                <div class="control-row" style="background:var(--bg-input); padding:5px; border-radius:4px; margin-bottom:4px;">
-                    <label style="color:#a78bfa; font-weight:bold;">💬 コメントフォント:</label>
-                    <select id="customFontSelect" class="select-layout" style="width:110px;">
-                        <option value="Helvetica" selected>Helvetica</option><option value="Times New Roman">Times New Roman</option><option value="Georgia">Georgia</option><option value="Futura">Futura</option>
-                        <option value="Hiragino Mincho ProN, YuMincho">ヒラギノ明朝 / 遊明朝</option><option value="Hiragino Kaku Gothic ProN">ヒラギノゴシック</option><option value="custom">— 手動指定 —</option>
-                    </select>
-                </div>
-                <div class="control-row" id="customFontNameRow" style="display:none;"><label>手動名:</label><input type="text" id="customFontNameInput" class="input-dark" value="Helvetica" style="width:130px;"></div>
-
-                <div class="control-row" style="background:var(--bg-input); padding:5px; border-radius:4px; margin-bottom:4px;">
-                    <label style="color:#a78bfa; font-weight:bold;">📷 メタデータフォント:</label>
-                    <select id="exifFontSelect" class="select-layout" style="width:110px;">
-                        <option value="Helvetica" selected>Helvetica</option><option value="Times New Roman">Times New Roman</option><option value="Georgia">Georgia</option><option value="Futura">Futura</option>
-                        <option value="Hiragino Mincho ProN, YuMincho">ヒラギノ明朝 / 遊明朝</option><option value="Hiragino Kaku Gothic ProN">ヒラギノゴシック</option><option value="custom">— 手動指定 —</option>
-                    </select>
-                </div>
-                <div class="control-row" id="exifFontNameRow" style="display:none;"><label>手動名:</label><input type="text" id="exifFontNameInput" class="input-dark" value="Helvetica" style="width:130px;"></div>
-
-                <div class="control-row"><label>メタデータの文字サイズ:</label><input type="range" id="exifFontSizeRange" min="10" max="50" value="20"></div>
-                <div class="control-row"><label>コメントの横間隔:</label><input type="range" id="customLetterSpacingRange" min="0" max="15" value="1"></div>
-                <div class="control-row"><label>メタデータの横間隔:</label><input type="range" id="exifLetterSpacingRange" min="0" max="15" value="1"></div>
-                <div class="control-row"><label>テキスト全体の不透明度:</label><input type="range" id="textOpacityRange" min="10" max="100" value="85"></div>
-                <div class="control-row">
-                    <label>テキストの色調:</label>
-                    <select id="textColorTypeSelect" class="select-layout" style="width:140px;">
-                        <option value="white" selected>ホワイト</option>
-                        <option value="black">ブラック</option>
-                        <option value="gray">グレー</option>
-                        <option value="dropper">スポイト / 任意指定</option>
-                        <option value="gradient">パレット・グラデーション</option>
-                    </select>
-                </div>
-                <div class="control-row" id="textCustomColorRow" style="display:none;">
-                    <label>任意カラー選択:</label>
-                    <div style="display:flex; gap:4px; align-items:center;">
-                        <input type="color" id="textManualColorInput" value="#ffffff">
-                        <button class="btn" id="textDropperBtn" style="padding:3px 6px; font-size:10px;">スポイト</button>
-                    </div>
-                </div>
-
-                <div class="control-row">
-                    <label>テキストの縁取り(白黒):</label>
-                    <select id="textStrokeColorSelect" class="select-layout" style="width:140px;">
-                        <option value="none" selected>なし</option><option value="white">ホワイト</option><option value="black">ブラック</option>
-                    </select>
-                </div>
-                <div class="control-row" id="textStrokeWidthRow" style="display:none;"><label>縁取りの太さ:</label><input type="range" id="textStrokeWidthRange" min="1" max="20" value="4"></div>
-                <div class="control-row"><label>ドロップシャドウの濃さ:</label><input type="range" id="textShadowOpacityRange" min="0" max="100" value="45"></div>
-                <div class="control-row"><label>ドロップシャドウのぼかし:</label><input type="range" id="textShadowBlurRange" min="0" max="50" value="6"></div>
-                <div class="control-row"><label>テキスト間の縦間隔:</label><input type="range" id="textLineSpacingRange" min="10" max="60" value="25"></div>
-            </div>
-
-            <div class="text-toggle-list">
-                <div style="color:#a78bfa; font-weight:bold; margin-bottom:4px;">💬 自由コメント（最大3つ）</div>
                 
-                <div class="text-toggle-item">
-                    <input type="checkbox" id="chkCustomText1" checked><label>1:</label>
-                    <input type="range" id="sizeCustom1" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
-                    <input type="checkbox" id="chkVert1" style="margin-left:4px;"><label>縦</label>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-top:8px;">
+                    <button class="btn" id="btnAlignCommentCenter" style="background:var(--border-color); font-size:11px; padding:6px;">コメントを中央配置</button>
+                    <button class="btn" id="btnAlignExifCenter" style="background:var(--border-color); font-size:11px; padding:6px;">カメラ情報を中央配置</button>
                 </div>
-                <input type="text" id="customTextInput1" class="text-edit-input" value="PHOTO ARTWORK">
-                
-                <div class="text-toggle-item">
-                    <input type="checkbox" id="chkCustomText2"><label>2:</label>
-                    <input type="range" id="sizeCustom2" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
-                    <input type="checkbox" id="chkVert2" style="margin-left:4px;"><label>縦</label>
-                </div>
-                <input type="text" id="customTextInput2" class="text-edit-input" value="">
-                
-                <div class="text-toggle-item">
-                    <input type="checkbox" id="chkCustomText3"><label>3:</label>
-                    <input type="range" id="sizeCustom3" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
-                    <input type="checkbox" id="chkVert3" style="margin-left:4px;"><label>縦</label>
-                </div>
-                <input type="text" id="customTextInput3" class="text-edit-input" value="">
-                
-                <hr style="border:0; border-top:1px solid var(--border-color); margin:8px 0;">
-                
-                <div class="text-toggle-item" style="margin-top:6px;">
-                    <input type="checkbox" id="chkExifGroup" checked>
-                    <label style="color:#a78bfa; font-weight:bold;">📷 カメラメタデータ（ドラッグ連動）</label>
-                </div>
-                <div class="text-toggle-item"><input type="checkbox" id="chkCamera" checked><label>カメラ名:</label></div>
-                <input type="text" id="cameraTextInput" class="text-edit-input" placeholder="カメラ名">
-                <div class="text-toggle-item"><input type="checkbox" id="chkLens" checked><label>レンズ名:</label></div>
-                <input type="text" id="lensTextInput" class="text-edit-input" placeholder="レンズ名">
-                <div class="text-toggle-item"><input type="checkbox" id="chkSettings" checked><label>撮影設定:</label></div>
-                <input type="text" id="settingsTextInput" class="text-edit-input" placeholder="シャッター速度 / F値 / ISO">
-                <div class="text-toggle-item"><input type="checkbox" id="chkDate" checked><label>撮影日時:</label></div>
-                <input type="text" id="dateTextInput" class="text-edit-input" placeholder="撮影日時">
-
-                <hr style="border:0; border-top:1px solid var(--border-color); margin:8px 0;">
-
-                <div class="text-toggle-item" style="margin-top:6px;">
-                    <input type="checkbox" id="chkLocationGroup">
-                    <label style="color:#a78bfa; font-weight:bold;">📍 位置情報テキスト</label>
-                </div>
-                <div id="locationGroupFields" style="display:none;">
-                    <div class="text-toggle-item"><input type="checkbox" id="chkLocation1" checked><label>位置情報 1:</label></div>
-                    <input type="text" id="locationTextInput1" class="text-edit-input" placeholder="国名 / 地名など">
-                    <div class="text-toggle-item"><input type="checkbox" id="chkLocation2"><label>位置情報 2:</label></div>
-                    <input type="text" id="locationTextInput2" class="text-edit-input" placeholder="住所 / スポット名など">
-                </div>
+                <button class="btn" id="btnAlignReset" style="width:100%; background:var(--border-color); font-size:11px; padding:6px; margin-top:6px;">テキスト位置の完全リセット</button>
             </div>
-            
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-top:8px;">
-                <button class="btn" id="btnAlignCommentCenter" style="background:var(--border-color); font-size:11px; padding:6px;">コメントを中央配置</button>
-                <button class="btn" id="btnAlignExifCenter" style="background:var(--border-color); font-size:11px; padding:6px;">カメラ情報を中央配置</button>
-            </div>
-            <button class="btn" id="btnAlignReset" style="width:100%; background:var(--border-color); font-size:11px; padding:6px; margin-top:6px;">テキスト位置の完全リセット</button>
         </div>
 
-        <div style="margin-top: auto;">
-            <h2>10. エクスポート</h2>
-            <div class="status-box">
-                <div class="control-row">
-                    <label style="color:#a78bfa; font-weight:bold;">書き出し形式:</label>
-                    <select id="exportFormatSelect" class="select-layout" style="width:110px;">
-                        <option value="jpeg" selected>JPEG (標準)</option>
-                        <option value="png">PNG (高品質)</option>
-                    </select>
+        <div style="margin-top: auto; padding-top: 15px;">
+            <h2 class="section-header">10. エクスポート<span class="toggle-icon">▼</span></h2>
+            <div class="section-content">
+                <div class="status-box">
+                    <div class="control-row">
+                        <label style="color:var(--accent-sub); font-weight:bold;">書き出し形式:</label>
+                        <select id="exportFormatSelect" class="select-layout" style="width:110px;">
+                            <option value="jpeg" selected>JPEG (標準)</option>
+                            <option value="png">PNG (高品質)</option>
+                        </select>
+                    </div>
+                    <div class="control-row">
+                        <label>書き出し解像度:</label>
+                        <select id="exportResolutionSelect" class="select-layout" style="width:110px;"><option value="1200">軽量 (1200px)</option><option value="1920" selected>標準 (1920px)</option><option value="3840">4K画質 (3840px)</option><option value="7680">8K画質 (7680px)</option></select>
+                    </div>
+                    <div class="control-row" style="color: #10b981; font-weight:bold; margin-top:2px;"><span>高精度推定容量:</span><span id="lblEstimatedSize">0.0 MB</span></div>
                 </div>
-                <div class="control-row">
-                    <label>書き出し解像度:</label>
-                    <select id="exportResolutionSelect" class="select-layout" style="width:110px;"><option value="1200">軽量 (1200px)</option><option value="1920" selected>標準 (1920px)</option><option value="3840">4K画質 (3840px)</option><option value="7680">8K画質 (7680px)</option></select>
-                </div>
-                <div class="control-row" style="color: #10b981; font-weight:bold; margin-top:2px;"><span>高精度推定容量:</span><span id="lblEstimatedSize">0.0 MB</span></div>
+                <div style="margin-top:5px; margin-bottom:4px;"><input type="text" id="fileNameInput" class="save-name-input" value="palette-artwork" style="width:100%; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); padding:5px; border-radius:6px; font-size:11px; box-sizing:border-box;"></div>
+                
+                <button class="btn btn-download" id="downloadBtn" style="width: 100%;">💾 ファイルとして保存 (ダウンロード)</button>
+                <button id="iosShareBtn">📤 アプリで共有 / 写真に保存</button>
             </div>
-            <div style="margin-top:5px; margin-bottom:4px;"><input type="text" id="fileNameInput" class="save-name-input" value="palette-artwork" style="width:100%; background:var(--bg-input); border:1px solid var(--border-color); color:var(--text-main); padding:5px; border-radius:6px; font-size:11px; box-sizing:border-box;"></div>
-            
-            <button class="btn btn-download" id="downloadBtn" style="width: 100%;">💾 ファイルとして保存 (ダウンロード)</button>
-            <button id="iosShareBtn">📤 アプリで共有 / 写真に保存</button>
         </div>
     </div>
 
@@ -477,14 +532,39 @@
     </div>
 
 <script>
+    // ===== アコーディオン開閉 =====
+    document.querySelectorAll('.section-header').forEach(header => {
+        header.addEventListener('click', () => {
+            header.classList.toggle('collapsed');
+            const content = header.nextElementSibling;
+            if (content && content.classList.contains('section-content')) {
+                content.classList.toggle('collapsed');
+            }
+        });
+    });
+
     // ===== SafeStorage =====
     const SafeStorage = {
         get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } },
         set(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { } },
     };
 
-    // ===== UI Theme =====
+    // ===== UI Theme & Accent Color =====
     const uiThemeSelect = document.getElementById('uiThemeSelect');
+    const accentColorSelect = document.getElementById('accentColorSelect');
+
+    function applyAccentColor() {
+        const root = document.documentElement;
+        const v = accentColorSelect.value;
+        if(v === 'emerald'){ root.style.setProperty('--accent-main', '#34d399'); root.style.setProperty('--accent-sub', '#10b981'); }
+        else if(v === 'amber'){ root.style.setProperty('--accent-main', '#fbbf24'); root.style.setProperty('--accent-sub', '#f59e0b'); }
+        else if(v === 'pink'){ root.style.setProperty('--accent-main', '#f472b6'); root.style.setProperty('--accent-sub', '#ec4899'); }
+        else if(v === 'purple'){ root.style.setProperty('--accent-main', '#a78bfa'); root.style.setProperty('--accent-sub', '#8b5cf6'); }
+        else { root.style.setProperty('--accent-main', '#38bdf8'); root.style.setProperty('--accent-sub', '#60a5fa'); }
+    }
+    accentColorSelect.addEventListener('change', applyAccentColor);
+    applyAccentColor();
+
     uiThemeSelect.addEventListener('change', () => {
         const root = document.documentElement;
         if(uiThemeSelect.value === 'white') {
@@ -533,6 +613,11 @@
 
     const imageScaleRange = document.getElementById('imageScaleRange');
     const resetImageScaleBtn = document.getElementById('resetImageScaleBtn');
+    const imageOffsetXRange = document.getElementById('imageOffsetXRange');
+    const imageOffsetYRange = document.getElementById('imageOffsetYRange');
+    const resetImagePosBtn = document.getElementById('resetImagePosBtn');
+    const chkHideImage = document.getElementById('chkHideImage');
+
     const chkShowExtractionMarkers = document.getElementById('chkShowExtractionMarkers');
     const markerSizeRow = document.getElementById('markerSizeRow');
     const markerNumberRow = document.getElementById('markerNumberRow');
@@ -580,6 +665,7 @@
     const exifFontSelect = document.getElementById('exifFontSelect');
     const exifFontNameRow = document.getElementById('exifFontNameRow');
     const exifFontNameInput = document.getElementById('exifFontNameInput');
+    const textAlignSelect = document.getElementById('textAlignSelect');
     
     // コメントごとのサイズ
     const sizeCustom1 = document.getElementById('sizeCustom1');
@@ -663,7 +749,7 @@
     let cachedBgCanvas = null;
     let bgNeedsUpdate = true;
 
-    let userPresets = SafeStorage.get('studio_palette_presets_v17') || {};
+    let userPresets = SafeStorage.get('studio_palette_presets_v19') || {};
     let ratioHistory = SafeStorage.get('studio_ratio_history') || [];
     let textLayers = { 
         custom1: { x: 0.5, y: 0.81, isVert: false }, 
@@ -741,7 +827,8 @@
     [chkLocation1, chkLocation2, locationTextInput1, locationTextInput2].forEach(el => el.addEventListener('input', drawWorkspace));
 
     [palettePosition, paletteThickness, paletteGapRange, colorSpacingRange, whiteBorderRange,
-     chkDrawPalette, chkShowExtractionMarkers, imageScaleRange, exportResolutionSelect,
+     chkDrawPalette, chkShowExtractionMarkers, imageScaleRange, imageOffsetXRange, imageOffsetYRange,
+     chkHideImage, textAlignSelect, exportResolutionSelect,
      sizeCustom1, sizeCustom2, sizeCustom3, exifFontSizeRange, customLetterSpacingRange, exifLetterSpacingRange,
      textOpacityRange, textColorTypeSelect, textManualColorInput, textLineSpacingRange,
      textStrokeWidthRange, textShadowOpacityRange, textShadowBlurRange,
@@ -760,6 +847,7 @@
     [customTextInput1, customTextInput2, customTextInput3, cameraTextInput, lensTextInput, settingsTextInput, dateTextInput].forEach(el => { el.addEventListener('input', drawWorkspace); });
 
     resetImageScaleBtn.addEventListener('click', () => { imageScaleRange.value = 100; drawWorkspace(); });
+    resetImagePosBtn.addEventListener('click', () => { imageOffsetXRange.value = 0; imageOffsetYRange.value = 0; drawWorkspace(); });
 
     bgShuffleBtn.addEventListener('click', () => {
         gradientPatternIndex = (gradientPatternIndex + 1) % 5;
@@ -881,7 +969,6 @@
         drawWorkspace(); 
     });
 
-    // ===== EXIF helpers =====
     function cleanManufacturer(name) {
         if (!name) return "";
         const upper = name.toUpperCase();
@@ -897,79 +984,57 @@
         return name;
     }
 
-    function parseLensName(exifThis) {
-        const candidates = [
-            EXIF.getTag(exifThis, "LensModel"),
-            EXIF.getTag(exifThis, "Lens"),
-            EXIF.getTag(exifThis, "LensInfo"),
-            EXIF.getTag(exifThis, "UndefinedTag:0x9289"),
-            EXIF.getTag(exifThis, "LensSpecification")
-        ];
-        for (let c of candidates) {
-            if (!c) continue;
-            if (Array.isArray(c)) {
-                const parts = c.map(v => (v && v.numerator !== undefined) ? (v.numerator / v.denominator) : (typeof v === 'number' ? v : null)).filter(x => x !== null);
-                if (parts.length >= 2) return `${parts[0]}–${parts[1]}mm`;
-                continue;
-            }
-            const s = String(c).trim();
-            if (s.length > 2 && !/^[\d\s\/\.,\-]+$/.test(s)) return s;
-        }
-
-        // フォールバック: 焦点距離情報から推測して作成
-        const focal = EXIF.getTag(exifThis, "FocalLength");
-        const focal35 = EXIF.getTag(exifThis, "FocalLengthIn35mmFilm");
-        let focalStr = "";
-        if (focal) {
-            const f = focal.numerator ? focal.numerator/focal.denominator : focal;
-            focalStr = `${f}mm`;
-        } else if (focal35) {
-            focalStr = `${focal35}mm`;
-        }
-        if (focalStr) return focalStr + " Lens";
-
-        return "";
-    }
-
-    // ===== Image loading =====
+    // ===== Image loading & Exifr parsing =====
     imageInput.addEventListener('change', async (e) => {
         let file = e.target.files[0]; if (!file) return;
         loadingOverlay.style.display = 'flex'; loadingText.textContent = "Loading...";
         const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
         fileNameInput.value = nameWithoutExt + "-palette";
 
-        const readExifSafe = new Promise((resolve) => {
-            try {
-                if (typeof EXIF === 'undefined') { resolve(); return; }
-                EXIF.getData(file, function() {
-                    const make = EXIF.getTag(this, "Make") || "";
-                    const modelName = EXIF.getTag(this, "Model") || "";
-                    const lensName = parseLensName(this);
-                    const fNum = EXIF.getTag(this, "FNumber");
-                    const exposure = EXIF.getTag(this, "ExposureTime");
-                    const iso = EXIF.getTag(this, "ISOSpeedRatings");
-                    const dateTime = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime") || "";
+        try {
+            if (typeof exifr !== 'undefined') {
+                const exifData = await exifr.parse(file, { tiff: true, xmp: true, makernote: true, gps: true });
+                if (exifData) {
+                    const make = exifData.Make || "";
+                    const modelName = exifData.Model || "";
+                    let lensName = exifData.LensModel || exifData.Lens || "";
+                    if (!lensName && make.includes("Apple") && exifData.LensMake) {
+                        lensName = `${exifData.LensMake} ${exifData.LensModel || ""}`.trim();
+                    }
+                    if (!lensName && exifData.FocalLength) {
+                        lensName = `${Math.round(exifData.FocalLength)}mm Lens`;
+                    }
 
-                    // GPS位置情報取得とNominatim APIによる逆ジオコーディング
-                    const latArray = EXIF.getTag(this, "GPSLatitude");
-                    const latRef = EXIF.getTag(this, "GPSLatitudeRef");
-                    const lonArray = EXIF.getTag(this, "GPSLongitude");
-                    const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+                    const shortMake = cleanManufacturer(make);
+                    let cleanedModel = modelName;
+                    if (shortMake && cleanedModel.toUpperCase().startsWith(make.toUpperCase())) {
+                        cleanedModel = cleanedModel.substring(make.length).trim();
+                    }
+                    cameraTextInput.value = (shortMake || cleanedModel) ? `${shortMake} ${cleanedModel}`.trim() : "";
+                    lensTextInput.value = lensName;
 
-                    if (latArray && lonArray) {
-                        const toDec = (arr, ref) => {
-                            const d = arr[0].numerator ? arr[0].numerator/arr[0].denominator : arr[0];
-                            const m = arr[1].numerator ? arr[1].numerator/arr[1].denominator : arr[1];
-                            const s = arr[2].numerator ? arr[2].numerator/arr[2].denominator : arr[2];
-                            let dd = d + m/60 + s/3600;
-                            if (ref === "S" || ref === "W") dd *= -1;
-                            return dd;
-                        };
-                        const lat = toDec(latArray, latRef);
-                        const lon = toDec(lonArray, lonRef);
+                    const fNumVal = exifData.FNumber;
+                    const expNum = exifData.ExposureTime;
+                    const iso = exifData.ISO;
+                    let ssText = expNum ? (expNum < 1 ? `1/${Math.round(1/expNum)}s` : `${expNum}s`) : "";
+                    let fText = fNumVal ? `f/${fNumVal.toFixed(1)}` : "";
+                    let isoText = iso ? `ISO ${iso}` : "";
+                    settingsTextInput.value = [ssText, fText, isoText].filter(Boolean).join("   ");
 
-                        // Nominatim API呼び出し (無料枠・CORS対応)
-                        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&accept-language=ja`)
+                    const dt = exifData.DateTimeOriginal;
+                    if (dt && dt instanceof Date && !isNaN(dt)) {
+                        const yyyy = dt.getFullYear();
+                        const mm = String(dt.getMonth() + 1).padStart(2, '0');
+                        const dd = String(dt.getDate()).padStart(2, '0');
+                        dateTextInput.value = `${yyyy}.${mm}.${dd}`;
+                    } else if (typeof dt === 'string') {
+                        dateTextInput.value = dt.substring(0, 10).replace(/:/g, '.');
+                    } else {
+                        dateTextInput.value = "";
+                    }
+
+                    if (exifData.latitude != null && exifData.longitude != null) {
+                        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${exifData.latitude}&lon=${exifData.longitude}&zoom=14&accept-language=ja`)
                             .then(res => res.json())
                             .then(data => {
                                 if (data && data.address) {
@@ -980,38 +1045,13 @@
                                     const city = data.address.city || data.address.town || data.address.village || data.address.county || "";
                                     locationTextInput1.value = country;
                                     locationTextInput2.value = `${state} ${city}`.trim();
-                                    drawWorkspace(); // ロード後反映
+                                    drawWorkspace(); 
                                 }
-                            }).catch(e => { /* 無視 */ });
+                            }).catch(e => {});
                     }
-
-                    const toNum = v => {
-                        if (!v) return null;
-                        if (typeof v === 'number') return v;
-                        if (v.numerator !== undefined && v.denominator) return v.numerator / v.denominator;
-                        return parseFloat(v) || null;
-                    };
-
-                    const shortMake = cleanManufacturer(make);
-                    let cleanedModel = modelName;
-                    if (shortMake && cleanedModel.toUpperCase().startsWith(make.toUpperCase())) {
-                        cleanedModel = cleanedModel.substring(make.length).trim();
-                    }
-                    cameraTextInput.value = (shortMake || cleanedModel) ? `${shortMake} ${cleanedModel}`.trim() : "";
-                    lensTextInput.value = lensName;
-
-                    const expNum = toNum(exposure);
-                    const fNumVal = toNum(fNum);
-                    let ssText = expNum ? (expNum < 1 ? `1/${Math.round(1/expNum)}s` : `${expNum}s`) : "";
-                    let fText = fNumVal ? `f/${fNumVal.toFixed(1)}` : "";
-                    let isoText = iso ? `ISO ${iso}` : "";
-                    settingsTextInput.value = [ssText, fText, isoText].filter(Boolean).join("   ");
-                    dateTextInput.value = dateTime ? String(dateTime).substring(0, 10).replace(/:/g, '.') : "";
-                    resolve();
-                });
-            } catch(err) { resolve(); }
-        });
-        await Promise.race([readExifSafe, new Promise(res => setTimeout(res, 800))]);
+                }
+            }
+        } catch(err) { console.error("EXIF Parse Error:", err); }
 
         let processFile = file;
         if (file.name.toLowerCase().match(/\.(heic|heif)$/i)) {
@@ -1063,54 +1103,34 @@
 
     applyCropBtn.addEventListener('click', async () => {
         if (!cropper) return;
-
-        loadingOverlay.style.display = 'flex';
-        loadingText.textContent = "スタジオを構築中...";
+        loadingOverlay.style.display = 'flex'; loadingText.textContent = "スタジオを構築中...";
         await new Promise(r => setTimeout(r, 60));
 
         let canvas;
-        try {
-            canvas = cropper.getCroppedCanvas({ maxWidth: 1920, maxHeight: 1920 });
-        } catch(e) { canvas = null; }
-
-        if (!canvas) {
-            loadingOverlay.style.display = 'none';
-            alert("トリミングに失敗しました。画像を再選択してください。");
-            return;
-        }
-
+        try { canvas = cropper.getCroppedCanvas({ maxWidth: 1920, maxHeight: 1920 }); } catch(e) { canvas = null; }
+        if (!canvas) { loadingOverlay.style.display = 'none'; alert("トリミングに失敗しました。画像を再選択してください。"); return; }
         try { hqCropData = cropper.getData(true); } catch(e) { hqCropData = null; }
 
-        croppedCanvas = canvas;
-        activeImage = canvas;
+        croppedCanvas = canvas; activeImage = canvas;
 
         if (chkResetOnRecrop.checked || selectedColors.length === 0) {
             generateFivePalettePatterns(canvas, parseInt(colorCountSelect.value));
-            palettePatternIndex = 0;
-            selectedColors = [...cachedDataBlocks[0]];
-            renderControlSlots();
+            palettePatternIndex = 0; selectedColors = [...cachedDataBlocks[0]]; renderControlSlots();
         }
 
-        cropperArea.style.display = 'none';
-        previewArea.style.display = 'flex';
-        cropperControls.style.display = 'none';
-        paletteControls.style.display = 'block';
+        cropperArea.style.display = 'none'; previewArea.style.display = 'flex';
+        cropperControls.style.display = 'none'; paletteControls.style.display = 'block';
 
         if (chkResetOnRecrop.checked) applySelectedPresetLogic();
 
-        requestBackgroundUpdate();
-        drawWorkspace();
-        updateSimulatorInfo();
+        requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
         loadingOverlay.style.display = 'none';
     });
 
     let samplePixelData = null;
-
     function buildSamplePixelData(canvas) {
-        const sc = document.createElement('canvas');
-        sc.width = 64; sc.height = 64;
-        const sctx = sc.getContext('2d');
-        sctx.drawImage(canvas, 0, 0, 64, 64);
+        const sc = document.createElement('canvas'); sc.width = 64; sc.height = 64;
+        const sctx = sc.getContext('2d'); sctx.drawImage(canvas, 0, 0, 64, 64);
         samplePixelData = { data: sctx.getImageData(0, 0, 64, 64).data, w: 64, h: 64 };
     }
 
@@ -1118,43 +1138,30 @@
         if (!samplePixelData) return '#888888';
         const x = Math.min(Math.max(Math.round(nx * (samplePixelData.w - 1)), 0), samplePixelData.w - 1);
         const y = Math.min(Math.max(Math.round(ny * (samplePixelData.h - 1)), 0), samplePixelData.h - 1);
-        const i = (y * samplePixelData.w + x) * 4;
-        const d = samplePixelData.data;
+        const i = (y * samplePixelData.w + x) * 4; const d = samplePixelData.data;
         return '#' + [d[i], d[i+1], d[i+2]].map(v => v.toString(16).padStart(2, '0')).join('');
     }
 
-    // 多様な色を抽出するための FPS (Furthest Point Sampling) ロジック
     function generateFivePalettePatterns(canvas, count) {
         buildSamplePixelData(canvas);
-        cachedDataBlocks  = Array.from({ length: 5 }, () => []);
-        cachedPointsBlocks = Array.from({ length: 5 }, () => []);
-
-        const w = samplePixelData.w;
-        const h = samplePixelData.h;
-        const d = samplePixelData.data;
+        cachedDataBlocks  = Array.from({ length: 5 }, () => []); cachedPointsBlocks = Array.from({ length: 5 }, () => []);
+        const w = samplePixelData.w; const h = samplePixelData.h; const d = samplePixelData.data;
         
         let allPoints = [];
         for(let y=0; y<h; y+=2) {
             for(let x=0; x<w; x+=2) {
                 let i = (y*w + x)*4;
-                if (d[i+3] > 0) { // 透明でないピクセルのみ
-                    allPoints.push({x: x/w, y: y/h, r: d[i], g: d[i+1], b: d[i+2]});
-                }
+                if (d[i+3] > 0) allPoints.push({x: x/w, y: y/h, r: d[i], g: d[i+1], b: d[i+2]});
             }
         }
         if(allPoints.length === 0) allPoints.push({x: 0.5, y: 0.5, r: 128, g: 128, b: 128});
 
         for (let p = 0; p < 5; p++) {
-            // パターンごとに乱数シード的にシャッフル
             let pts = [...allPoints].sort(() => Math.random() - 0.5);
-            let selected = [];
-            // 最初の1点はシャッフルされた配列の先頭
-            selected.push(pts[0]);
+            let selected = []; selected.push(pts[0]);
 
-            // 2点目以降は既存の点からRGB空間での距離が最も遠い点を選ぶ
             for(let i=1; i<count; i++) {
-                let maxDist = -1;
-                let bestPt = pts[0];
+                let maxDist = -1; let bestPt = pts[0];
                 for(let pt of pts) {
                     if (selected.includes(pt)) continue;
                     let minDist = Infinity;
@@ -1162,10 +1169,7 @@
                         let dist = Math.pow(pt.r - s.r, 2) + Math.pow(pt.g - s.g, 2) + Math.pow(pt.b - s.b, 2);
                         if (dist < minDist) minDist = dist;
                     }
-                    if (minDist > maxDist) {
-                        maxDist = minDist;
-                        bestPt = pt;
-                    }
+                    if (minDist > maxDist) { maxDist = minDist; bestPt = pt; }
                 }
                 selected.push(bestPt);
             }
@@ -1173,32 +1177,22 @@
             for(let i=0; i<count; i++) {
                 let pt = selected[i];
                 let hex = '#' + [pt.r, pt.g, pt.b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
-                cachedDataBlocks[p].push(hex);
-                cachedPointsBlocks[p].push({ x: pt.x, y: pt.y });
+                cachedDataBlocks[p].push(hex); cachedPointsBlocks[p].push({ x: pt.x, y: pt.y });
             }
         }
     }
 
     let activeMarkerDragIndex = -1;
-
     function updateMarkerPosition(idx, nx, ny) {
         if (!cachedPointsBlocks[palettePatternIndex]) return;
         cachedPointsBlocks[palettePatternIndex][idx] = { x: nx, y: ny };
         const newColor = sampleColorAt(nx, ny);
-        cachedDataBlocks[palettePatternIndex][idx] = newColor;
-        selectedColors[idx] = newColor;
+        cachedDataBlocks[palettePatternIndex][idx] = newColor; selectedColors[idx] = newColor;
         const slots = sortableContainer.querySelectorAll('.slot');
-        if (slots[idx]) {
-            const picker = slots[idx].querySelector('input[type="color"]');
-            if (picker) picker.value = newColor;
-        }
-        requestBackgroundUpdate();
-        drawWorkspace();
+        if (slots[idx]) { const picker = slots[idx].querySelector('input[type="color"]'); if (picker) picker.value = newColor; }
+        requestBackgroundUpdate(); drawWorkspace();
     }
-
-    function onMarkerDragEnd() {
-        updateSimulatorInfo();
-    }
+    function onMarkerDragEnd() { updateSimulatorInfo(); }
 
     function renderControlSlots() {
         sortableContainer.innerHTML = '';
@@ -1226,64 +1220,40 @@
             slot.addEventListener('dragend', () => { slot.classList.remove('dragging'); });
             slot.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
             slot.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const srcIdx = parseInt(e.dataTransfer.getData('text/plain'));
-                const targetIdx = parseInt(slot.dataset.index);
+                e.preventDefault(); const srcIdx = parseInt(e.dataTransfer.getData('text/plain')); const targetIdx = parseInt(slot.dataset.index);
                 if (srcIdx === targetIdx || isNaN(srcIdx)) return;
-                const movedColor = selectedColors.splice(srcIdx, 1)[0];
-                selectedColors.splice(targetIdx, 0, movedColor);
-                const pts = cachedPointsBlocks[palettePatternIndex];
-                const cols = cachedDataBlocks[palettePatternIndex];
-                if (pts && pts.length > Math.max(srcIdx, targetIdx)) {
-                    const movedPt = pts.splice(srcIdx, 1)[0];
-                    pts.splice(targetIdx, 0, movedPt);
-                }
-                if (cols && cols.length > Math.max(srcIdx, targetIdx)) {
-                    const movedCol = cols.splice(srcIdx, 1)[0];
-                    cols.splice(targetIdx, 0, movedCol);
-                }
+                const movedColor = selectedColors.splice(srcIdx, 1)[0]; selectedColors.splice(targetIdx, 0, movedColor);
+                const pts = cachedPointsBlocks[palettePatternIndex]; const cols = cachedDataBlocks[palettePatternIndex];
+                if (pts && pts.length > Math.max(srcIdx, targetIdx)) { const movedPt = pts.splice(srcIdx, 1)[0]; pts.splice(targetIdx, 0, movedPt); }
+                if (cols && cols.length > Math.max(srcIdx, targetIdx)) { const movedCol = cols.splice(srcIdx, 1)[0]; cols.splice(targetIdx, 0, movedCol); }
                 renderControlSlots(); requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
             });
-            setupSlotTouchSort(slot);
-            sortableContainer.appendChild(slot);
+            setupSlotTouchSort(slot); sortableContainer.appendChild(slot);
         });
     }
 
     let touchSortState = null;
-
     function setupSlotTouchSort(slot) {
-        const handle = slot.querySelector('.handle');
-        if (!handle) return;
+        const handle = slot.querySelector('.handle'); if (!handle) return;
         handle.addEventListener('touchstart', (e) => {
-            if (e.touches.length !== 1) return;
-            e.preventDefault(); e.stopPropagation();
+            if (e.touches.length !== 1) return; e.preventDefault(); e.stopPropagation();
             const touch = e.touches[0];
             touchSortState = { srcSlot: slot, srcIdx: parseInt(slot.dataset.index), startY: touch.clientY, lastOverSlot: null };
             slot.classList.add('touch-dragging');
         }, { passive: false });
-
         handle.addEventListener('touchmove', (e) => {
-            if (!touchSortState || touchSortState.srcSlot !== slot) return;
-            e.preventDefault(); e.stopPropagation();
-            const touch = e.touches[0];
-            const el = document.elementFromPoint(touch.clientX, touch.clientY);
-            const overSlot = el ? el.closest('.slot') : null;
+            if (!touchSortState || touchSortState.srcSlot !== slot) return; e.preventDefault(); e.stopPropagation();
+            const touch = e.touches[0]; const el = document.elementFromPoint(touch.clientX, touch.clientY); const overSlot = el ? el.closest('.slot') : null;
             if (touchSortState.lastOverSlot && touchSortState.lastOverSlot !== slot) touchSortState.lastOverSlot.classList.remove('touch-drag-over');
             if (overSlot && overSlot !== slot) { overSlot.classList.add('touch-drag-over'); touchSortState.lastOverSlot = overSlot; }
         }, { passive: false });
-
         handle.addEventListener('touchend', (e) => {
-            if (!touchSortState || touchSortState.srcSlot !== slot) return;
-            e.preventDefault(); slot.classList.remove('touch-dragging');
+            if (!touchSortState || touchSortState.srcSlot !== slot) return; e.preventDefault(); slot.classList.remove('touch-dragging');
             if (touchSortState.lastOverSlot) {
-                touchSortState.lastOverSlot.classList.remove('touch-drag-over');
-                const targetIdx = parseInt(touchSortState.lastOverSlot.dataset.index);
-                const srcIdx = touchSortState.srcIdx;
+                touchSortState.lastOverSlot.classList.remove('touch-drag-over'); const targetIdx = parseInt(touchSortState.lastOverSlot.dataset.index); const srcIdx = touchSortState.srcIdx;
                 if (!isNaN(targetIdx) && srcIdx !== targetIdx) {
-                    const movedColor = selectedColors.splice(srcIdx, 1)[0];
-                    selectedColors.splice(targetIdx, 0, movedColor);
-                    const pts = cachedPointsBlocks[palettePatternIndex];
-                    const cols = cachedDataBlocks[palettePatternIndex];
+                    const movedColor = selectedColors.splice(srcIdx, 1)[0]; selectedColors.splice(targetIdx, 0, movedColor);
+                    const pts = cachedPointsBlocks[palettePatternIndex]; const cols = cachedDataBlocks[palettePatternIndex];
                     if (pts && pts.length > Math.max(srcIdx, targetIdx)) { const movedPt = pts.splice(srcIdx, 1)[0]; pts.splice(targetIdx, 0, movedPt); }
                     if (cols && cols.length > Math.max(srcIdx, targetIdx)) { const movedCol = cols.splice(srcIdx, 1)[0]; cols.splice(targetIdx, 0, movedCol); }
                     renderControlSlots(); requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
@@ -1291,21 +1261,15 @@
             }
             touchSortState = null;
         }, { passive: false });
-
         handle.addEventListener('touchcancel', () => {
-            if (touchSortState && touchSortState.srcSlot === slot) {
-                slot.classList.remove('touch-dragging');
-                if (touchSortState.lastOverSlot) touchSortState.lastOverSlot.classList.remove('touch-drag-over');
-                touchSortState = null;
-            }
+            if (touchSortState && touchSortState.srcSlot === slot) { slot.classList.remove('touch-dragging'); if (touchSortState.lastOverSlot) touchSortState.lastOverSlot.classList.remove('touch-drag-over'); touchSortState = null; }
         });
     }
 
     function updateSimulatorInfo() {
         if (!activeImage) return;
         const res = parseInt(exportResolutionSelect.value);
-        let height = userTargetRatio >= 1 ? Math.round(res / userTargetRatio) : res;
-        let width = userTargetRatio >= 1 ? res : Math.round(res * userTargetRatio);
+        let height = userTargetRatio >= 1 ? Math.round(res / userTargetRatio) : res; let width = userTargetRatio >= 1 ? res : Math.round(res * userTargetRatio);
         let bitPerPixel = 1.95;
         if (parseInt(whiteBorderRange.value) > 0) bitPerPixel *= 0.95;
         if (bgModeSelect.value !== 'gradient') bitPerPixel *= 0.82;
@@ -1314,25 +1278,17 @@
         if (res >= 7680) bitPerPixel *= 0.82; else if (res >= 3840) bitPerPixel *= 0.91;
         lblEstimatedSize.textContent = `${(((width * height) * bitPerPixel) / 8 / (1024 * 1024)).toFixed(1)} MB`;
     }
-    exportFormatSelect.addEventListener('change', updateSimulatorInfo);
 
     function getGradientCoordinates(width, height, angle) {
-        const rad = (angle % 360) * Math.PI / 180;
-        const cx = width / 2; const cy = height / 2;
+        const rad = (angle % 360) * Math.PI / 180; const cx = width / 2; const cy = height / 2;
         const r = Math.abs(width * Math.cos(rad)) + Math.abs(height * Math.sin(rad)) / 2;
-        return {
-            x0: cx - Math.cos(rad) * r, y0: cy - Math.sin(rad) * r,
-            x1: cx + Math.cos(rad) * r, y1: cy + Math.sin(rad) * r
-        };
+        return { x0: cx - Math.cos(rad) * r, y0: cy - Math.sin(rad) * r, x1: cx + Math.cos(rad) * r, y1: cy + Math.sin(rad) * r };
     }
 
     function drawSmoothGradient(targetCtx, width, height, colors) {
         if (!colors || colors.length === 0) colors = ['#333333', '#888888'];
-        const angle = parseFloat(bgGradientAngleRange.value);
-        const coords = getGradientCoordinates(width, height, angle);
+        const angle = parseFloat(bgGradientAngleRange.value); const coords = getGradientCoordinates(width, height, angle);
         const grad = targetCtx.createLinearGradient(coords.x0, coords.y0, coords.x1, coords.y1);
-
-        const n = colors.length;
         let stops;
         if (gradientPatternIndex === 0) { stops = [...colors]; } 
         else if (gradientPatternIndex === 1) { stops = [...colors].reverse(); } 
@@ -1349,9 +1305,7 @@
                 const imgData = targetCtx.getImageData(0, 0, width, height); const data = imgData.data;
                 for (let i = 0; i < data.length; i += 4) {
                     const noise = (Math.random() - 0.5) * 4;
-                    data[i]   = Math.min(255, Math.max(0, data[i]   + noise));
-                    data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise));
-                    data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise));
+                    data[i] = Math.min(255, Math.max(0, data[i] + noise)); data[i+1] = Math.min(255, Math.max(0, data[i+1] + noise)); data[i+2] = Math.min(255, Math.max(0, data[i+2] + noise));
                 }
                 targetCtx.putImageData(imgData, 0, 0);
             } catch(e) { }
@@ -1360,17 +1314,14 @@
     }
 
     function drawMosaicBackground(targetCtx, width, height, blockSize, srcImage) {
-        if (!srcImage) return;
-        if (blockSize < 1) blockSize = 1;
+        if (!srcImage) return; if (blockSize < 1) blockSize = 1;
         const cols = Math.ceil(width / blockSize); const rows = Math.ceil(height / blockSize);
         const tempCanvas = document.createElement('canvas'); tempCanvas.width = cols; tempCanvas.height = rows; const tCtx = tempCanvas.getContext('2d');
         const imgW = srcImage.width || srcImage.videoWidth || cols; const imgH = srcImage.height || srcImage.videoHeight || rows;
         const scale = Math.max(cols / imgW, rows / imgH); const dw = imgW * scale; const dh = imgH * scale; const dx = (cols - dw) / 2; const dy = (rows - dh) / 2;
         tCtx.drawImage(srcImage, dx, dy, dw, dh);
-        targetCtx.imageSmoothingEnabled = false;
-        targetCtx.drawImage(tempCanvas, 0, 0, cols, rows, 0, 0, cols * blockSize, rows * blockSize);
-        targetCtx.imageSmoothingEnabled = true;
-        targetCtx.fillStyle = 'rgba(0,0,0,0.15)'; targetCtx.fillRect(0, 0, width, height);
+        targetCtx.imageSmoothingEnabled = false; targetCtx.drawImage(tempCanvas, 0, 0, cols, rows, 0, 0, cols * blockSize, rows * blockSize);
+        targetCtx.imageSmoothingEnabled = true; targetCtx.fillStyle = 'rgba(0,0,0,0.15)'; targetCtx.fillRect(0, 0, width, height);
     }
 
     function drawBackground(targetCtx, w, h, srcImage) {
@@ -1380,8 +1331,7 @@
         if (mode === 'black') { targetCtx.fillStyle = '#000000'; targetCtx.fillRect(0, 0, w, h); return; }
         if (mode === 'dropper') { targetCtx.fillStyle = bgManualColorInput.value; targetCtx.fillRect(0, 0, w, h); return; }
         if (mode === 'pixel') {
-            const minCanvasDim = Math.min(w, h);
-            const currentBlockSize = Math.round(minCanvasDim * (parseFloat(densitySizeRange.value) / 1000));
+            const minCanvasDim = Math.min(w, h); const currentBlockSize = Math.round(minCanvasDim * (parseFloat(densitySizeRange.value) / 1000));
             drawMosaicBackground(targetCtx, w, h, currentBlockSize, srcImage);
         } else {
             drawSmoothGradient(targetCtx, w, h, selectedColors);
@@ -1394,8 +1344,7 @@
         const hexFontSize = Math.round(paletteThickRef * (parseFloat(hexFontSizeRange.value) / 100));
         if (hexFontSize < 4) return;
         const hexSpacing = parseFloat(hexLetterSpacingRange.value);
-        ctx.font = `bold ${hexFontSize}px ${currentHexFont}, sans-serif`;
-        ctx.textBaseline = "middle"; ctx.textAlign = "left";
+        ctx.font = `bold ${hexFontSize}px ${currentHexFont}, sans-serif`; ctx.textBaseline = "middle"; ctx.textAlign = "left";
         const r = parseInt(hex.substring(1, 3), 16), g = parseInt(hex.substring(3, 5), 16), b = parseInt(hex.substring(5, 7), 16);
         ctx.fillStyle = (r * 0.299 + g * 0.587 + b * 0.114) > 150 ? "#000000" : "#ffffff";
         const chars = hex.toUpperCase().split("");
@@ -1416,6 +1365,8 @@
 
         const isTransparent = bgModeSelect.value === 'none';
         const isSimpleModeCheck = palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked;
+        const isHideImageCheck = chkHideImage.checked; // 👻画像非表示フラグ
+
         if (isTransparent || isSimpleModeCheck) {
             targetCtx.clearRect(0, 0, width, height);
         }
@@ -1470,6 +1421,10 @@
             imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             if (paletteDrawEnabled) { if (pos === 'bottom') imgY -= (paletteSize + gap) / 2; else if (pos === 'top') imgY += (paletteSize + gap) / 2; }
 
+            // ★ オフセット移動の適用
+            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 100);
+            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 100);
+
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
             let finalSpacing = rawSpacing;
@@ -1477,18 +1432,25 @@
             if (finalSpacing * (totalColors - 1) >= maxPaletteLength * 0.6) finalSpacing = Math.floor((maxPaletteLength * 0.6) / Math.max(totalColors - 1, 1));
             const singleBlockLength = (maxPaletteLength - (finalSpacing * (totalColors - 1))) / totalColors;
 
-            targetCtx.shadowColor = "rgba(0,0,0,0.45)";
-            const sb = 80; const sy = 25;
-            targetCtx.shadowBlur = isHighRes ? sb : Math.round(sb / 3);
-            targetCtx.shadowOffsetY = isHighRes ? sy : Math.round(sy / 3);
-            if (isHighRes && rawOriginalImage && hqCropData) {
-                const sx = hqCropData.x * imageScaleRatioX, sy2 = hqCropData.y * imageScaleRatioY;
-                const sw = hqCropData.width * imageScaleRatioX, sh = hqCropData.height * imageScaleRatioY;
-                targetCtx.drawImage(rawOriginalImage, sx, sy2, sw, sh, imgX, imgY, imgWidth, imgHeight);
+            if (isHideImageCheck) {
+                targetCtx.save();
+                targetCtx.globalCompositeOperation = 'destination-out';
+                targetCtx.fillRect(imgX, imgY, imgWidth, imgHeight);
+                targetCtx.restore();
             } else {
-                const src = activeImage || croppedCanvas; if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
+                targetCtx.shadowColor = "rgba(0,0,0,0.45)";
+                const sb = 80; const sy = 25;
+                targetCtx.shadowBlur = isHighRes ? sb : Math.round(sb / 3);
+                targetCtx.shadowOffsetY = isHighRes ? sy : Math.round(sy / 3);
+                if (isHighRes && rawOriginalImage && hqCropData) {
+                    const sx = hqCropData.x * imageScaleRatioX, sy2 = hqCropData.y * imageScaleRatioY;
+                    const sw = hqCropData.width * imageScaleRatioX, sh = hqCropData.height * imageScaleRatioY;
+                    targetCtx.drawImage(rawOriginalImage, sx, sy2, sw, sh, imgX, imgY, imgWidth, imgHeight);
+                } else {
+                    const src = activeImage || croppedCanvas; if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
+                }
+                targetCtx.shadowColor = "transparent"; targetCtx.shadowBlur = 0; targetCtx.shadowOffsetY = 0;
             }
-            targetCtx.shadowColor = "transparent"; targetCtx.shadowBlur = 0; targetCtx.shadowOffsetY = 0;
 
             let palettesToDraw = [];
             if (paletteDrawEnabled) {
@@ -1530,14 +1492,25 @@
                 imgWidth = iW; imgHeight = iH; imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             }
 
+            // ★ オフセット移動の適用
+            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 100);
+            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 100);
+
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
-            if (isHighRes && rawOriginalImage && hqCropData) {
-                const sx = hqCropData.x * imageScaleRatioX, sy2 = hqCropData.y * imageScaleRatioY;
-                const sw = hqCropData.width * imageScaleRatioX, sh = hqCropData.height * imageScaleRatioY;
-                targetCtx.drawImage(rawOriginalImage, sx, sy2, sw, sh, imgX, imgY, imgWidth, imgHeight);
-            } else {
-                const src = activeImage || croppedCanvas; if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
+            if (isHideImageCheck && !isSimpleMode) {
+                targetCtx.save();
+                targetCtx.globalCompositeOperation = 'destination-out';
+                targetCtx.fillRect(imgX, imgY, imgWidth, imgHeight);
+                targetCtx.restore();
+            } else if (!isHideImageCheck) {
+                if (isHighRes && rawOriginalImage && hqCropData) {
+                    const sx = hqCropData.x * imageScaleRatioX, sy2 = hqCropData.y * imageScaleRatioY;
+                    const sw = hqCropData.width * imageScaleRatioX, sh = hqCropData.height * imageScaleRatioY;
+                    targetCtx.drawImage(rawOriginalImage, sx, sy2, sw, sh, imgX, imgY, imgWidth, imgHeight);
+                } else {
+                    const src = activeImage || croppedCanvas; if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
+                }
             }
 
             if (paletteDrawEnabled) {
@@ -1618,6 +1591,7 @@
         const shadowBlur = parseInt(textShadowBlurRange.value) * scale;
         const strokeColor = textStrokeColorSelect.value;
         const strokeWidth = parseInt(textStrokeWidthRange.value) * scale;
+        const alignOpt = textAlignSelect.value; // 自動か、左右中央揃えか
 
         const setupTextColorMode = (startPos, totalLen, isVert) => {
             const mode = textColorTypeSelect.value;
@@ -1638,18 +1612,29 @@
         const drawTextAdvanced = (textStr, cx, cy, fSize, fFamily, tracking, isVert) => {
             if (!textStr) return; 
             targetCtx.font = `500 ${fSize}px ${fFamily}, sans-serif`; 
-            targetCtx.textBaseline = "middle"; targetCtx.textAlign = "left";
+            
             const chars = textStr.split(""); 
             let totalW = 0, totalH = 0;
             if (isVert) { chars.forEach((c, idx) => { totalH += fSize + (idx < chars.length - 1 ? tracking : 0); }); }
             else { chars.forEach((c, idx) => { totalW += targetCtx.measureText(c).width + (idx < chars.length - 1 ? tracking : 0); }); }
 
             let startX = cx * width, startY = cy * height; 
+            
+            // ★ テキストの揃え方向制御
             let alignX = cx < 0.45 ? "left" : (cx > 0.55 ? "right" : "center");
+            if (alignOpt !== "auto") alignX = alignOpt; // 強制上書き
             let alignY = cy < 0.45 ? "top" : (cy > 0.55 ? "bottom" : "center");
             
-            if (isVert) { targetCtx.textAlign = "center"; if (alignY === "center") startY -= totalH / 2; else if (alignY === "bottom") startY -= totalH; } 
-            else { if (alignX === "center") startX -= totalW / 2; else if (alignX === "right") startX -= totalW; }
+            targetCtx.textBaseline = "middle"; 
+            
+            if (isVert) { 
+                targetCtx.textAlign = "center"; 
+                if (alignY === "center") startY -= totalH / 2; else if (alignY === "bottom") startY -= totalH; 
+            } else { 
+                targetCtx.textAlign = alignX;
+                // 揃えに応じて開始位置補正 (textAlignはそのまま設定するだけでCanvas側が対応してくれる)
+                // 左揃えならstartXそのまま、右揃えならstartX基準で左に伸びる
+            }
 
             targetCtx.lineJoin = "round";
 
@@ -1722,10 +1707,11 @@
             hexFont: hexFontSelect.value, hexCustomFont: hexFontNameInput.value, hexFontSize: hexFontSizeRange.value, hexLetterSpacing: hexLetterSpacingRange.value,
             cFont: customFontSelect.value, cCustomFont: customFontNameInput.value, eFont: exifFontSelect.value, eCustomFont: exifFontNameInput.value,
             eFontSize: exifFontSizeRange.value, opacity: textOpacityRange.value, cType: textColorTypeSelect.value, mColor: textManualColorInput.value,
-            cLetterSpacing: customLetterSpacingRange.value, eLetterSpacing: exifLetterSpacingRange.value,
-            lineSpacing: textLineSpacingRange.value, bgMode: bgModeSelect.value, bgManualColor: bgManualColorInput.value, pSize: densitySizeRange.value, uiTheme: uiThemeSelect.value,
+            cLetterSpacing: customLetterSpacingRange.value, eLetterSpacing: exifLetterSpacingRange.value, textAlign: textAlignSelect.value,
+            lineSpacing: textLineSpacingRange.value, bgMode: bgModeSelect.value, bgManualColor: bgManualColorInput.value, pSize: densitySizeRange.value, uiTheme: uiThemeSelect.value, accentColor: accentColorSelect.value,
             strokeColor: textStrokeColorSelect.value, strokeWidth: textStrokeWidthRange.value, shadowOp: textShadowOpacityRange.value, shadowBlur: textShadowBlurRange.value,
-            bgAngle: bgGradientAngleRange.value, imgScale: imageScaleRange.value, showMarker: chkShowExtractionMarkers.checked, markerSize: markerSizeRange.value, markerNum: chkMarkerNumber.checked,
+            bgAngle: bgGradientAngleRange.value, imgScale: imageScaleRange.value, imgOffsetX: imageOffsetXRange.value, imgOffsetY: imageOffsetYRange.value, hideImg: chkHideImage.checked,
+            showMarker: chkShowExtractionMarkers.checked, markerSize: markerSizeRange.value, markerNum: chkMarkerNumber.checked,
             customTexts: [
                 { text: customTextInput1.value, chk: chkCustomText1.checked, vert: chkVert1.checked, x: textLayers.custom1.x, y: textLayers.custom1.y, size: sizeCustom1.value },
                 { text: customTextInput2.value, chk: chkCustomText2.checked, vert: chkVert2.checked, x: textLayers.custom2.x, y: textLayers.custom2.y, size: sizeCustom2.value },
@@ -1735,7 +1721,7 @@
             coords: { exifGroup: {x: textLayers.exifGroup.x, y: textLayers.exifGroup.y}, locationGroup: {x: textLayers.locationGroup.x, y: textLayers.locationGroup.y} },
             locationGroup: { show: chkLocationGroup.checked, l1chk: chkLocation1.checked, l2chk: chkLocation2.checked, l1: locationTextInput1.value, l2: locationTextInput2.value }
         };
-        SafeStorage.set('studio_palette_presets_v17', userPresets);
+        SafeStorage.set('studio_palette_presets_v19', userPresets);
         newPresetName.value = ""; loadPresetList(); presetSelect.value = name;
         alert(`プリセット「${name}」を保存しました。`);
     });
@@ -1743,7 +1729,7 @@
     deletePresetBtn.addEventListener('click', () => {
         const name = presetSelect.value; if (name === 'default') return;
         if (confirm(`プリセット「${name}」を消去しますか？`)) {
-            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v17', userPresets); loadPresetList(); drawWorkspace();
+            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v19', userPresets); loadPresetList(); drawWorkspace();
         }
     });
 
@@ -1751,6 +1737,7 @@
         const name = presetSelect.value; if(name === 'default' || !userPresets[name]) return;
         const d = userPresets[name];
         uiThemeSelect.value = d.uiTheme || "gray"; uiThemeSelect.dispatchEvent(new Event('change'));
+        if (d.accentColor) { accentColorSelect.value = d.accentColor; applyAccentColor(); }
         palettePosition.value = d.pos; paletteThickness.value = d.thick; paletteGapRange.value = d.gap; colorSpacingRange.value = d.space; whiteBorderRange.value = d.border; showHexSelect.value = d.showHex || "none";
         if (d.overlayOpacity !== undefined) overlayOpacityRange.value = d.overlayOpacity;
         if (d.overlayWidth !== undefined) overlayWidthRange.value = d.overlayWidth;
@@ -1766,6 +1753,7 @@
         markerSizeRange.value = d.markerSize || 8;
         chkMarkerNumber.checked = d.markerNum ?? true;
         bgGradientAngleRange.value = d.bgAngle || 180; imageScaleRange.value = d.imgScale || 100;
+        imageOffsetXRange.value = d.imgOffsetX || 0; imageOffsetYRange.value = d.imgOffsetY || 0; chkHideImage.checked = d.hideImg ?? false;
         bgModeSelect.value = d.bgMode || "gradient"; bgManualColorInput.value = d.bgManualColor || "#ffffff";
         densitySizeRange.value = d.pSize || 35;
         densitySizeRow.style.display = bgModeSelect.value === 'pixel' ? 'flex' : 'none';
@@ -1776,6 +1764,7 @@
             customFontSelect.value = d.cFont; customFontNameInput.value = d.cCustomFont || ""; customFontNameRow.style.display = d.cFont === 'custom' ? 'flex' : 'none'; currentCustomFont = d.cFont === 'custom' ? d.cCustomFont : d.cFont;
             exifFontSelect.value = d.eFont || d.cFont; exifFontNameInput.value = d.eCustomFont || ""; exifFontNameRow.style.display = d.eFont === 'custom' ? 'flex' : 'none'; currentExifFont = d.eFont === 'custom' ? d.eCustomFont : d.eFont;
         }
+        textAlignSelect.value = d.textAlign || "auto";
         textStrokeColorSelect.value = d.strokeColor || "none"; textStrokeWidthRow.style.display = textStrokeColorSelect.value !== 'none' ? 'flex' : 'none';
         textStrokeWidthRange.value = d.strokeWidth || 4; textShadowOpacityRange.value = d.shadowOp || 35; textShadowBlurRange.value = d.shadowBlur || 4;
         exifFontSizeRange.value = d.eFontSize || 20; textOpacityRange.value = d.opacity || 85;
@@ -2020,7 +2009,7 @@
         if (!activeImage) return; 
         const currentMode = bgModeSelect.value;
         const simpleActive = palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked;
-        const format = (currentMode === 'none' || simpleActive) ? 'png' : exportFormatSelect.value;
+        const format = (currentMode === 'none' || simpleActive || chkHideImage.checked) ? 'png' : exportFormatSelect.value;
         let targetRes = parseInt(exportResolutionSelect.value);
         
         if (isIOS) {
@@ -2045,7 +2034,7 @@
         if (!activeImage) return;
         const currentMode = bgModeSelect.value;
         const simpleActive = palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked;
-        const format = (currentMode === 'none' || simpleActive) ? 'png' : exportFormatSelect.value;
+        const format = (currentMode === 'none' || simpleActive || chkHideImage.checked) ? 'png' : exportFormatSelect.value;
         let targetRes = parseInt(exportResolutionSelect.value);
         
         if (targetRes > 4096) targetRes = 4096;
