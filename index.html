@@ -596,7 +596,7 @@
 
     // ===== DOM refs =====
     const imageInput = document.getElementById('imageInput');
-    const dropZone = document.getElementById('dropZone'); // ドロップゾーン
+    const dropZone = document.getElementById('dropZone'); 
     const cropperArea = document.getElementById('cropperArea');
     const cropperImage = document.getElementById('cropperImage');
     const cropperControls = document.getElementById('cropperControls');
@@ -677,7 +677,6 @@
     const exifFontNameInput = document.getElementById('exifFontNameInput');
     const textAlignSelect = document.getElementById('textAlignSelect');
     
-    // コメントごとのサイズ
     const sizeCustom1 = document.getElementById('sizeCustom1');
     const sizeCustom2 = document.getElementById('sizeCustom2');
     const sizeCustom3 = document.getElementById('sizeCustom3');
@@ -759,7 +758,7 @@
     let cachedBgCanvas = null;
     let bgNeedsUpdate = true;
 
-    let userPresets = SafeStorage.get('studio_palette_presets_v19') || {};
+    let userPresets = SafeStorage.get('studio_palette_presets_v20') || {};
     let ratioHistory = SafeStorage.get('studio_ratio_history') || [];
     let textLayers = { 
         custom1: { x: 0.5, y: 0.81, isVert: false }, 
@@ -994,7 +993,6 @@
         return name;
     }
 
-    // ===== Image processing function (D&D and input type=file) =====
     async function processSelectedFile(file) {
         if (!file) return;
         loadingOverlay.style.display = 'flex'; loadingText.textContent = "Loading...";
@@ -1097,7 +1095,6 @@
                     cropperImage.onload = () => {
                         cropperArea.style.display = 'flex'; previewArea.style.display = 'none'; 
                         cropperControls.style.display = 'block'; paletteControls.style.display = 'none';
-                        // アコーディオンを開く
                         document.getElementById('cropperControls').querySelector('.section-header').classList.remove('collapsed');
                         document.getElementById('cropperControls').querySelector('.section-content').classList.remove('collapsed');
                         if (cropper) cropper.destroy(); 
@@ -1114,7 +1111,6 @@
         reader.readAsDataURL(processFile);
     }
 
-    // ===== File Input & Drag and Drop =====
     imageInput.addEventListener('change', (e) => {
         processSelectedFile(e.target.files[0]);
     });
@@ -1457,8 +1453,8 @@
             imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             if (paletteDrawEnabled) { if (pos === 'bottom') imgY -= (paletteSize + gap) / 2; else if (pos === 'top') imgY += (paletteSize + gap) / 2; }
 
-            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 100);
-            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 100);
+            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 400);
+            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 400);
 
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
@@ -1527,8 +1523,8 @@
                 imgWidth = iW; imgHeight = iH; imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             }
 
-            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 100);
-            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 100);
+            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 400);
+            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 400);
 
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
@@ -1664,7 +1660,8 @@
                 targetCtx.textAlign = "center"; 
                 if (alignY === "center") startY -= totalH / 2; else if (alignY === "bottom") startY -= totalH; 
             } else { 
-                targetCtx.textAlign = alignX;
+                targetCtx.textAlign = "left"; 
+                if (alignX === "center") startX -= totalW / 2; else if (alignX === "right") startX -= totalW;
             }
 
             targetCtx.lineJoin = "round";
@@ -1752,7 +1749,7 @@
             coords: { exifGroup: {x: textLayers.exifGroup.x, y: textLayers.exifGroup.y}, locationGroup: {x: textLayers.locationGroup.x, y: textLayers.locationGroup.y} },
             locationGroup: { show: chkLocationGroup.checked, l1chk: chkLocation1.checked, l2chk: chkLocation2.checked, l1: locationTextInput1.value, l2: locationTextInput2.value }
         };
-        SafeStorage.set('studio_palette_presets_v19', userPresets);
+        SafeStorage.set('studio_palette_presets_v21', userPresets);
         newPresetName.value = ""; loadPresetList(); presetSelect.value = name;
         alert(`プリセット「${name}」を保存しました。`);
     });
@@ -1760,7 +1757,7 @@
     deletePresetBtn.addEventListener('click', () => {
         const name = presetSelect.value; if (name === 'default') return;
         if (confirm(`プリセット「${name}」を消去しますか？`)) {
-            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v19', userPresets); loadPresetList(); drawWorkspace();
+            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v21', userPresets); loadPresetList(); drawWorkspace();
         }
     });
 
