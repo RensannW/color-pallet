@@ -238,7 +238,13 @@
                 <div class="control-group" style="gap:6px;">
                     <div class="control-row">
                         <label>抽出カラー数:</label>
-                        <select id="colorCountSelect" class="select-layout" style="width:70px;"><option value="5" selected>5色</option><option value="6">6色</option><option value="7">7色</option><option value="8">8色</option><option value="9">9色</option><option value="10">10色</option></select>
+                        <select id="colorCountSelect" class="select-layout" style="width:70px;">
+                            <option value="5" selected>5色</option>
+                            <option value="6">6色</option>
+                            <option value="8">8色</option>
+                            <option value="10">10色</option>
+                            <option value="15">15色</option>
+                        </select>
                     </div>
                     <button class="btn" id="palettePatternBtn" style="background: var(--bg-input); color:var(--text-main); border:1px solid var(--border-color); font-size:11px; padding:6px;">パレット配色を別の候補に切り替える</button>
                     <div class="control-row" style="margin-top:4px;">
@@ -312,6 +318,20 @@
                     <div class="control-row"><label>パレットの太さ:</label><select id="paletteThickness" class="select-layout"><option value="small">小</option><option value="medium" selected>中</option><option value="large">大</option></select></div>
                     <div class="control-row" id="paletteGapRow"><label>パレットとの距離:</label><input type="range" id="paletteGapRange" min="0" max="100" value="20"></div>
                     <div class="control-row"><label>カラー同士の間隔:</label><input type="range" id="colorSpacingRange" min="0" max="40" value="0"></div>
+                    
+                    <div class="control-row">
+                        <label>各カラーの枠線:</label>
+                        <select id="paletteSlotBorderColor" class="select-layout" style="width:140px;">
+                            <option value="none" selected>なし</option>
+                            <option value="white">ホワイト</option>
+                            <option value="black">ブラック</option>
+                        </select>
+                    </div>
+                    <div class="control-row" id="paletteSlotBorderWidthRow" style="display:none;">
+                        <label>枠線の太さ:</label>
+                        <input type="range" id="paletteSlotBorderWidth" min="1" max="20" value="2">
+                    </div>
+
                     <div class="control-row"><label>外周の白枠(太さ):</label><input type="range" id="whiteBorderRange" min="0" max="60" value="0"></div>
 
                     <div id="overlayControls" style="display:none; flex-direction:column; gap:5px; border-top:1px solid var(--border-color); padding-top:6px; margin-top:4px;">
@@ -652,6 +672,12 @@
     const paletteGapRange = document.getElementById('paletteGapRange');
     const paletteGapRow = document.getElementById('paletteGapRow');
     const colorSpacingRange = document.getElementById('colorSpacingRange');
+    
+    // パレット枠線
+    const paletteSlotBorderColor = document.getElementById('paletteSlotBorderColor');
+    const paletteSlotBorderWidthRow = document.getElementById('paletteSlotBorderWidthRow');
+    const paletteSlotBorderWidth = document.getElementById('paletteSlotBorderWidth');
+
     const whiteBorderRange = document.getElementById('whiteBorderRange');
     const overlayControls = document.getElementById('overlayControls');
     const overlayOpacityRange = document.getElementById('overlayOpacityRange');
@@ -771,7 +797,7 @@
     let cachedBgCanvas = null;
     let bgNeedsUpdate = true;
 
-    let userPresets = SafeStorage.get('studio_palette_presets_v22') || {};
+    let userPresets = SafeStorage.get('studio_palette_presets_v24') || {};
     let ratioHistory = SafeStorage.get('studio_ratio_history') || [];
     let textLayers = { 
         custom1: { x: 0.5, y: 0.81, isVert: false }, 
@@ -798,6 +824,11 @@
     [overlayOpacityRange, overlayWidthRange, overlayThicknessRange, overlayInsetRange, chkSimpleMode].forEach(el => {
         el.addEventListener('input', () => { drawWorkspace(); updateSimulatorInfo(); });
         el.addEventListener('change', () => { drawWorkspace(); updateSimulatorInfo(); });
+    });
+
+    paletteSlotBorderColor.addEventListener('change', () => {
+        paletteSlotBorderWidthRow.style.display = paletteSlotBorderColor.value !== 'none' ? 'flex' : 'none';
+        drawWorkspace();
     });
 
     function requestBackgroundUpdate() { bgNeedsUpdate = true; }
@@ -849,6 +880,7 @@
     [chkLocation1, chkLocation2, locationTextInput1, locationTextInput2].forEach(el => el.addEventListener('input', drawWorkspace));
 
     [palettePosition, paletteThickness, paletteGapRange, colorSpacingRange, whiteBorderRange,
+     paletteSlotBorderColor, paletteSlotBorderWidth,
      chkDrawPalette, chkShowExtractionMarkers, imageScaleRange, imageOffsetXRange, imageOffsetYRange,
      chkHideImage, textAlignSelect, exportResolutionSelect,
      sizeCustom1, sizeCustom2, sizeCustom3, exifFontSizeRange, customLetterSpacingRange, exifLetterSpacingRange,
@@ -1355,7 +1387,6 @@
                 targetCtx.putImageData(imgData, 0, 0);
             } catch(e) { }
         }
-        targetCtx.fillStyle = "rgba(0,0,0,0.10)"; targetCtx.fillRect(0, 0, width, height);
     }
 
     function drawMosaicBackground(targetCtx, width, height, blockSize, srcImage) {
@@ -1412,9 +1443,7 @@
         const isSimpleModeCheck = palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked;
         const isHideImageCheck = chkHideImage.checked; 
 
-        if (isTransparent || isSimpleModeCheck || isHideImageCheck) {
-            targetCtx.clearRect(0, 0, width, height);
-        }
+        targetCtx.clearRect(0, 0, width, height);
 
         const srcForBg = activeImage || croppedCanvas;
 
@@ -1443,6 +1472,9 @@
         const isSimpleMode = isOverlayMode && chkSimpleMode.checked;
         const totalColors = selectedColors.length;
 
+        const slotBorderColor = paletteSlotBorderColor.value; 
+        const slotBorderWidthScale = Math.max(1, parseInt(paletteSlotBorderWidth.value) * (minDim / 1200));
+
         let imgX = 0, imgY = 0, imgWidth = width, imgHeight = height;
 
         if (!isOverlayMode) {
@@ -1466,9 +1498,8 @@
             imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             if (paletteDrawEnabled) { if (pos === 'bottom') imgY -= (paletteSize + gap) / 2; else if (pos === 'top') imgY += (paletteSize + gap) / 2; }
 
-            // 移動量の感度を1000に分割して微調整しやすく
-            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 1000);
-            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 1000);
+            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 400);
+            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 400);
 
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
@@ -1480,6 +1511,7 @@
             if (isHideImageCheck) {
                 targetCtx.save();
                 targetCtx.globalCompositeOperation = 'destination-out';
+                targetCtx.fillStyle = '#000';
                 targetCtx.fillRect(imgX, imgY, imgWidth, imgHeight);
                 targetCtx.restore();
             } else {
@@ -1514,6 +1546,13 @@
                     let bx = pal.x, by = pal.y, bw = paletteSize, bh = singleBlockLength;
                     if (pal.isHoriz) { bx = pal.x + offset; bw = singleBlockLength; bh = paletteSize; } else { by = pal.y + offset; }
                     targetCtx.fillRect(bx, by, bw + 0.5, bh + 0.5);
+
+                    if (slotBorderColor !== 'none') {
+                        targetCtx.strokeStyle = slotBorderColor === 'white' ? '#ffffff' : '#000000';
+                        targetCtx.lineWidth = slotBorderWidthScale;
+                        targetCtx.strokeRect(bx + targetCtx.lineWidth / 2, by + targetCtx.lineWidth / 2, bw - targetCtx.lineWidth + 0.5, bh - targetCtx.lineWidth + 0.5);
+                    }
+
                     drawHexLabel(targetCtx, selectedColors[i], bx, by, bw, bh);
                 }
             });
@@ -1537,14 +1576,15 @@
                 imgWidth = iW; imgHeight = iH; imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             }
 
-            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 1000);
-            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 1000);
+            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 400);
+            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 400);
 
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
             if (isHideImageCheck && !isSimpleMode) {
                 targetCtx.save();
                 targetCtx.globalCompositeOperation = 'destination-out';
+                targetCtx.fillStyle = '#000';
                 targetCtx.fillRect(imgX, imgY, imgWidth, imgHeight);
                 targetCtx.restore();
             } else if (!isHideImageCheck) {
@@ -1586,6 +1626,12 @@
                     if (isHoriz) { bx = parallelOffset + off; by = perpAnchor; bw = blockLen; bh = palThick; } 
                     else { bx = perpAnchor; by = parallelOffset + off; bw = palThick; bh = blockLen; }
                     targetCtx.fillRect(bx, by, bw + 0.5, bh + 0.5);
+
+                    if (slotBorderColor !== 'none') {
+                        targetCtx.strokeStyle = slotBorderColor === 'white' ? '#ffffff' : '#000000';
+                        targetCtx.lineWidth = slotBorderWidthScale;
+                        targetCtx.strokeRect(bx + targetCtx.lineWidth / 2, by + targetCtx.lineWidth / 2, bw - targetCtx.lineWidth + 0.5, bh - targetCtx.lineWidth + 0.5);
+                    }
 
                     targetCtx.globalAlpha = 1.0; drawHexLabel(targetCtx, selectedColors[i], bx, by, bw, bh); targetCtx.globalAlpha = ovOpacity;
                 }
@@ -1660,7 +1706,6 @@
             const chars = textStr.split(""); 
             let totalW = 0, totalH = 0;
             
-            // 描画アンカーを必ず左・上に固定して計測と描画を行う（Canvasネイティブのcenter配置による文字間隔バグを回避）
             targetCtx.textAlign = "left";
             targetCtx.textBaseline = "middle";
 
@@ -1757,6 +1802,7 @@
             strokeColor: textStrokeColorSelect.value, strokeWidth: textStrokeWidthRange.value, shadowOp: textShadowOpacityRange.value, shadowBlur: textShadowBlurRange.value,
             bgAngle: bgGradientAngleRange.value, imgScale: imageScaleRange.value, imgOffsetX: imageOffsetXRange.value, imgOffsetY: imageOffsetYRange.value, hideImg: chkHideImage.checked,
             showMarker: chkShowExtractionMarkers.checked, markerSize: markerSizeRange.value, markerNum: chkMarkerNumber.checked,
+            sBorderC: paletteSlotBorderColor.value, sBorderW: paletteSlotBorderWidth.value,
             customTexts: [
                 { text: customTextInput1.value, chk: chkCustomText1.checked, vert: chkVert1.checked, x: textLayers.custom1.x, y: textLayers.custom1.y, size: sizeCustom1.value },
                 { text: customTextInput2.value, chk: chkCustomText2.checked, vert: chkVert2.checked, x: textLayers.custom2.x, y: textLayers.custom2.y, size: sizeCustom2.value },
@@ -1766,7 +1812,7 @@
             coords: { exifGroup: {x: textLayers.exifGroup.x, y: textLayers.exifGroup.y}, locationGroup: {x: textLayers.locationGroup.x, y: textLayers.locationGroup.y} },
             locationGroup: { show: chkLocationGroup.checked, l1chk: chkLocation1.checked, l2chk: chkLocation2.checked, l1: locationTextInput1.value, l2: locationTextInput2.value }
         };
-        SafeStorage.set('studio_palette_presets_v22', userPresets);
+        SafeStorage.set('studio_palette_presets_v24', userPresets);
         newPresetName.value = ""; loadPresetList(); presetSelect.value = name;
         alert(`プリセット「${name}」を保存しました。`);
     });
@@ -1774,7 +1820,7 @@
     deletePresetBtn.addEventListener('click', () => {
         const name = presetSelect.value; if (name === 'default') return;
         if (confirm(`プリセット「${name}」を消去しますか？`)) {
-            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v22', userPresets); loadPresetList(); drawWorkspace();
+            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v24', userPresets); loadPresetList(); drawWorkspace();
         }
     });
 
@@ -1784,6 +1830,11 @@
         uiThemeSelect.value = d.uiTheme || "gray"; uiThemeSelect.dispatchEvent(new Event('change'));
         if (d.accentColor) { accentColorSelect.value = d.accentColor; applyAccentColor(); }
         palettePosition.value = d.pos; paletteThickness.value = d.thick; paletteGapRange.value = d.gap; colorSpacingRange.value = d.space; whiteBorderRange.value = d.border; showHexSelect.value = d.showHex || "none";
+        
+        paletteSlotBorderColor.value = d.sBorderC || 'none';
+        paletteSlotBorderWidthRow.style.display = paletteSlotBorderColor.value !== 'none' ? 'flex' : 'none';
+        paletteSlotBorderWidth.value = d.sBorderW || 2;
+        
         if (d.overlayOpacity !== undefined) overlayOpacityRange.value = d.overlayOpacity;
         if (d.overlayWidth !== undefined) overlayWidthRange.value = d.overlayWidth;
         if (d.overlayThickness !== undefined) overlayThicknessRange.value = d.overlayThickness;
