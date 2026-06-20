@@ -102,8 +102,21 @@
         .main-container { flex: 1; display: flex; justify-content: center; align-items: center; background: var(--bg-main); border-radius: 12px; padding: 10px; overflow: hidden; position: relative; min-height: 350px; border: 1px solid var(--border-color); transition: background-color 0.3s; }
         .cropper-area { width: 100%; height: 100%; display: none; justify-content: center; align-items: center; }
         #cropperImage { max-width: 100%; max-height: 100%; display: block; }
+        
         .preview-area { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; }
-        #viewCanvas { max-width: 100%; max-height: 100%; box-shadow: 0 20px 50px rgba(0,0,0,0.7); border-radius: 2px; cursor: move; touch-action: none; }
+        
+        /* 透過を視覚化するための市松模様 */
+        #viewCanvas { 
+            max-width: 100%; max-height: 100%; 
+            box-shadow: 0 20px 50px rgba(0,0,0,0.7); border-radius: 2px; 
+            cursor: move; touch-action: none;
+            background-color: #fff;
+            background-image: 
+                linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%, #e2e8f0),
+                linear-gradient(45deg, #e2e8f0 25%, transparent 25%, transparent 75%, #e2e8f0 75%, #e2e8f0);
+            background-size: 20px 20px;
+            background-position: 0 0, 10px 10px;
+        }
         
         #loadingOverlay {
             position: absolute; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.8);
@@ -758,7 +771,7 @@
     let cachedBgCanvas = null;
     let bgNeedsUpdate = true;
 
-    let userPresets = SafeStorage.get('studio_palette_presets_v20') || {};
+    let userPresets = SafeStorage.get('studio_palette_presets_v22') || {};
     let ratioHistory = SafeStorage.get('studio_ratio_history') || [];
     let textLayers = { 
         custom1: { x: 0.5, y: 0.81, isVert: false }, 
@@ -1453,8 +1466,9 @@
             imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             if (paletteDrawEnabled) { if (pos === 'bottom') imgY -= (paletteSize + gap) / 2; else if (pos === 'top') imgY += (paletteSize + gap) / 2; }
 
-            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 400);
-            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 400);
+            // 移動量の感度を1000に分割して微調整しやすく
+            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 1000);
+            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 1000);
 
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
@@ -1523,8 +1537,8 @@
                 imgWidth = iW; imgHeight = iH; imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             }
 
-            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 400);
-            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 400);
+            imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 1000);
+            imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 1000);
 
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
@@ -1645,6 +1659,11 @@
             
             const chars = textStr.split(""); 
             let totalW = 0, totalH = 0;
+            
+            // 描画アンカーを必ず左・上に固定して計測と描画を行う（Canvasネイティブのcenter配置による文字間隔バグを回避）
+            targetCtx.textAlign = "left";
+            targetCtx.textBaseline = "middle";
+
             if (isVert) { chars.forEach((c, idx) => { totalH += fSize + (idx < chars.length - 1 ? tracking : 0); }); }
             else { chars.forEach((c, idx) => { totalW += targetCtx.measureText(c).width + (idx < chars.length - 1 ? tracking : 0); }); }
 
@@ -1653,8 +1672,6 @@
             let alignX = cx < 0.45 ? "left" : (cx > 0.55 ? "right" : "center");
             if (alignOpt !== "auto") alignX = alignOpt; 
             let alignY = cy < 0.45 ? "top" : (cy > 0.55 ? "bottom" : "center");
-            
-            targetCtx.textBaseline = "middle"; 
             
             if (isVert) { 
                 targetCtx.textAlign = "center"; 
@@ -1749,7 +1766,7 @@
             coords: { exifGroup: {x: textLayers.exifGroup.x, y: textLayers.exifGroup.y}, locationGroup: {x: textLayers.locationGroup.x, y: textLayers.locationGroup.y} },
             locationGroup: { show: chkLocationGroup.checked, l1chk: chkLocation1.checked, l2chk: chkLocation2.checked, l1: locationTextInput1.value, l2: locationTextInput2.value }
         };
-        SafeStorage.set('studio_palette_presets_v21', userPresets);
+        SafeStorage.set('studio_palette_presets_v22', userPresets);
         newPresetName.value = ""; loadPresetList(); presetSelect.value = name;
         alert(`プリセット「${name}」を保存しました。`);
     });
@@ -1757,7 +1774,7 @@
     deletePresetBtn.addEventListener('click', () => {
         const name = presetSelect.value; if (name === 'default') return;
         if (confirm(`プリセット「${name}」を消去しますか？`)) {
-            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v21', userPresets); loadPresetList(); drawWorkspace();
+            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v22', userPresets); loadPresetList(); drawWorkspace();
         }
     });
 
