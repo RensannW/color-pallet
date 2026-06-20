@@ -50,13 +50,21 @@
         .btn {
             background: var(--accent-main); color: #ffffff; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
             border: none; padding: 9px; border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center;
-            font-size: 11px; transition: filter 0.2s, background 0.3s; -webkit-appearance: none;
+            font-size: 11px; transition: filter 0.2s, background 0.3s, transform 0.2s; -webkit-appearance: none;
         }
         .btn:hover { filter: brightness(0.85); }
         .btn-danger { background: #e53e3e; }
         .btn-download { background: #10b981; }
         input[type="file"] { display: none; }
         
+        /* ドロップゾーン用スタイル */
+        #dropZone.dragover {
+            background-color: var(--accent-sub);
+            border-color: #ffffff;
+            transform: scale(1.02);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+
         .control-group { display: flex; flex-direction: column; gap: 5px; background: var(--bg-slot); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); }
         .control-group-scroll { max-height: 250px; overflow-y: auto; padding-right: 4px; }
         .control-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-label); }
@@ -151,8 +159,9 @@
         <div>
             <h2 class="section-header">1. 画像の読み込み<span class="toggle-icon">▼</span></h2>
             <div class="section-content">
-                <label class="btn" style="display:block;">
-                    画像を選択
+                <label id="dropZone" class="btn" style="display:block; padding:20px 10px; border:2px dashed rgba(255,255,255,0.4); text-align:center; transition:all 0.2s;">
+                    <div style="font-size:14px; margin-bottom:4px;">📁 画像を選択</div>
+                    <div style="font-size:10px; font-weight:normal; opacity:0.8;">または、ここにドラッグ＆ドロップ</div>
                     <input type="file" id="imageInput" accept="image/*,.heic,.heif">
                 </label>
             </div>
@@ -587,6 +596,7 @@
 
     // ===== DOM refs =====
     const imageInput = document.getElementById('imageInput');
+    const dropZone = document.getElementById('dropZone'); // ドロップゾーン
     const cropperArea = document.getElementById('cropperArea');
     const cropperImage = document.getElementById('cropperImage');
     const cropperControls = document.getElementById('cropperControls');
@@ -984,9 +994,9 @@
         return name;
     }
 
-    // ===== Image loading & Exifr parsing =====
-    imageInput.addEventListener('change', async (e) => {
-        let file = e.target.files[0]; if (!file) return;
+    // ===== Image processing function (D&D and input type=file) =====
+    async function processSelectedFile(file) {
+        if (!file) return;
         loadingOverlay.style.display = 'flex'; loadingText.textContent = "Loading...";
         const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
         fileNameInput.value = nameWithoutExt + "-palette";
@@ -1087,6 +1097,9 @@
                     cropperImage.onload = () => {
                         cropperArea.style.display = 'flex'; previewArea.style.display = 'none'; 
                         cropperControls.style.display = 'block'; paletteControls.style.display = 'none';
+                        // アコーディオンを開く
+                        document.getElementById('cropperControls').querySelector('.section-header').classList.remove('collapsed');
+                        document.getElementById('cropperControls').querySelector('.section-content').classList.remove('collapsed');
                         if (cropper) cropper.destroy(); 
                         cropper = new Cropper(cropperImage, { aspectRatio: userTargetRatio, viewMode: 1, autoCropArea: 1.0, background: false, zoomOnWheel: true, zoomOnTouch: true, movable: true, rotatable: false }); 
                         loadingOverlay.style.display = 'none'; 
@@ -1099,6 +1112,29 @@
         };
         reader.onerror = () => { alert("ファイルの読み込みに失敗しました。"); loadingOverlay.style.display = 'none'; imageInput.value = ""; };
         reader.readAsDataURL(processFile);
+    }
+
+    // ===== File Input & Drag and Drop =====
+    imageInput.addEventListener('change', (e) => {
+        processSelectedFile(e.target.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            processSelectedFile(e.dataTransfer.files[0]);
+        }
     });
 
     applyCropBtn.addEventListener('click', async () => {
@@ -1365,9 +1401,9 @@
 
         const isTransparent = bgModeSelect.value === 'none';
         const isSimpleModeCheck = palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked;
-        const isHideImageCheck = chkHideImage.checked; // 👻画像非表示フラグ
+        const isHideImageCheck = chkHideImage.checked; 
 
-        if (isTransparent || isSimpleModeCheck) {
+        if (isTransparent || isSimpleModeCheck || isHideImageCheck) {
             targetCtx.clearRect(0, 0, width, height);
         }
 
@@ -1421,7 +1457,6 @@
             imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             if (paletteDrawEnabled) { if (pos === 'bottom') imgY -= (paletteSize + gap) / 2; else if (pos === 'top') imgY += (paletteSize + gap) / 2; }
 
-            // ★ オフセット移動の適用
             imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 100);
             imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 100);
 
@@ -1492,7 +1527,6 @@
                 imgWidth = iW; imgHeight = iH; imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             }
 
-            // ★ オフセット移動の適用
             imgX += imgWidth * (parseFloat(imageOffsetXRange.value) / 100);
             imgY += imgHeight * (parseFloat(imageOffsetYRange.value) / 100);
 
@@ -1591,7 +1625,7 @@
         const shadowBlur = parseInt(textShadowBlurRange.value) * scale;
         const strokeColor = textStrokeColorSelect.value;
         const strokeWidth = parseInt(textStrokeWidthRange.value) * scale;
-        const alignOpt = textAlignSelect.value; // 自動か、左右中央揃えか
+        const alignOpt = textAlignSelect.value; 
 
         const setupTextColorMode = (startPos, totalLen, isVert) => {
             const mode = textColorTypeSelect.value;
@@ -1620,9 +1654,8 @@
 
             let startX = cx * width, startY = cy * height; 
             
-            // ★ テキストの揃え方向制御
             let alignX = cx < 0.45 ? "left" : (cx > 0.55 ? "right" : "center");
-            if (alignOpt !== "auto") alignX = alignOpt; // 強制上書き
+            if (alignOpt !== "auto") alignX = alignOpt; 
             let alignY = cy < 0.45 ? "top" : (cy > 0.55 ? "bottom" : "center");
             
             targetCtx.textBaseline = "middle"; 
@@ -1632,8 +1665,6 @@
                 if (alignY === "center") startY -= totalH / 2; else if (alignY === "bottom") startY -= totalH; 
             } else { 
                 targetCtx.textAlign = alignX;
-                // 揃えに応じて開始位置補正 (textAlignはそのまま設定するだけでCanvas側が対応してくれる)
-                // 左揃えならstartXそのまま、右揃えならstartX基準で左に伸びる
             }
 
             targetCtx.lineJoin = "round";
