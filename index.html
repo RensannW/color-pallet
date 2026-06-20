@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>color Palette Studio Pro</title>
+    <title>Color Palette Studio Pro</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
@@ -90,43 +90,12 @@
         .spinner { width: 40px; height: 40px; border: 4px solid #3182ce; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* ==========================================
-           スマホ向けレイアウト（プレビュー上部固定）
-           ========================================== */
         @media (max-width: 768px) {
-            body { 
-                flex-direction: column-reverse; /* パネルを下に、プレビューを上に */
-                height: 100dvh; /* iOS Safari等でバーの出し入れに対応した画面ぴったりの高さ */
-                overflow: hidden; /* body自体はスクロールさせない */
-                padding: 0; 
-                gap: 0;
-            }
-            .main-container { 
-                width: 100%; 
-                height: 45dvh; /* プレビューの高さを画面の45%に固定 */
-                min-height: auto; 
-                box-sizing: border-box; 
-                border-radius: 0;
-                border-width: 0 0 1px 0; /* 下に境界線 */
-                flex-shrink: 0;
-                z-index: 10;
-                box-shadow: 0 4px 15px rgba(0,0,0,0.3); /* 浮いているような影 */
-            }
-            .panel { 
-                width: 100%; 
-                flex: 1; /* 残りの高さをすべてパネルに割り当て */
-                box-sizing: border-box; 
-                height: auto; 
-                max-height: none; 
-                overflow-y: auto; /* パネル内だけスクロールを許可 */
-                border-radius: 0;
-                border: none;
-                padding: 15px;
-                padding-bottom: 50px; /* 一番下までスクロールした時の余白 */
-            }
+            body { flex-direction: column-reverse; height: 100dvh; overflow: hidden; padding: 0; gap: 0; }
+            .main-container { width: 100%; height: 45dvh; min-height: auto; box-sizing: border-box; border-radius: 0; border-width: 0 0 1px 0; flex-shrink: 0; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+            .panel { width: 100%; flex: 1; box-sizing: border-box; height: auto; max-height: none; overflow-y: auto; border-radius: 0; border: none; padding: 15px; padding-bottom: 50px; }
         }
 
-        /* iOS Safari 対応 */
         * { -webkit-tap-highlight-color: transparent; }
         body { -webkit-overflow-scrolling: touch; }
         .panel { -webkit-overflow-scrolling: touch; }
@@ -137,13 +106,9 @@
         select { -webkit-appearance: none; }
         .btn { -webkit-appearance: none; touch-action: manipulation; }
         .slot { touch-action: none; }
-        /* ドラッグ中のスタイル */
         .slot.touch-dragging { opacity: 0.5; background: #475569; transform: scale(1.03); box-shadow: 0 8px 20px rgba(0,0,0,0.5); z-index: 999; }
         .slot.touch-drag-over { border-color: #3182ce; background: #2b4a7a; }
-        /* iOS での共有/保存ボタン */
-        #iosShareBtn { display: none; background: #3b82f6; color: white; border: none; padding: 9px;
-            border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center;
-            font-size: 11px; width: 100%; margin-top: 5px; -webkit-appearance: none; touch-action: manipulation; }
+        #iosShareBtn { display: none; background: #3b82f6; color: white; border: none; padding: 9px; border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center; font-size: 11px; width: 100%; margin-top: 5px; -webkit-appearance: none; touch-action: manipulation; }
         #iosShareBtn:hover { background: #2563eb; }
     </style>
 </head>
@@ -233,9 +198,13 @@
                     <label style="color:#e53e3e; font-weight:bold;">📍 抽出元マーカー（ドラッグで移動可）:</label>
                     <input type="checkbox" id="chkShowExtractionMarkers">
                 </div>
+                <div class="control-row" id="markerNumberRow" style="display:none;">
+                    <label>マーカーの数字表示:</label>
+                    <input type="checkbox" id="chkMarkerNumber" checked>
+                </div>
                 <div class="control-row" id="markerSizeRow" style="display:none;">
                     <label>マーカーサイズ:</label>
-                    <input type="range" id="markerSizeRange" min="4" max="30" value="8" style="width:140px;">
+                    <input type="range" id="markerSizeRange" min="4" max="80" value="10" style="width:140px;">
                 </div>
             </div>
 
@@ -296,9 +265,6 @@
                     <div class="control-row" style="background:var(--bg-input); padding:5px; border-radius:4px;">
                         <label style="color:#10b981; font-weight:bold;">📦 シンプル書き出しモード:</label>
                         <input type="checkbox" id="chkSimpleMode">
-                    </div>
-                    <div style="font-size:10px; color:#64748b; line-height:1.4;">
-                        シンプルモード：背景・テキスト・シャドウを省略。<br>画像＋パレットのみを最小構成で書き出します。
                     </div>
                 </div>
             </div>
@@ -387,7 +353,6 @@
                 </div>
                 <div class="control-row" id="exifFontNameRow" style="display:none;"><label>手動名:</label><input type="text" id="exifFontNameInput" class="input-dark" value="Helvetica" style="width:130px;"></div>
 
-                <div class="control-row"><label>コメントの文字サイズ:</label><input type="range" id="customFontSizeRange" min="10" max="60" value="28"></div>
                 <div class="control-row"><label>メタデータの文字サイズ:</label><input type="range" id="exifFontSizeRange" min="10" max="50" value="20"></div>
                 <div class="control-row"><label>コメントの横間隔:</label><input type="range" id="customLetterSpacingRange" min="0" max="15" value="1"></div>
                 <div class="control-row"><label>メタデータの横間隔:</label><input type="range" id="exifLetterSpacingRange" min="0" max="15" value="1"></div>
@@ -424,21 +389,25 @@
 
             <div class="text-toggle-list">
                 <div style="color:#a78bfa; font-weight:bold; margin-bottom:4px;">💬 自由コメント（最大3つ）</div>
+                
                 <div class="text-toggle-item">
-                    <input type="checkbox" id="chkCustomText1" checked><label>コメント 1:</label>
-                    <input type="checkbox" id="chkVert1" style="margin-left:auto;"><label>縦書き</label>
+                    <input type="checkbox" id="chkCustomText1" checked><label>1:</label>
+                    <input type="range" id="sizeCustom1" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
+                    <input type="checkbox" id="chkVert1" style="margin-left:4px;"><label>縦</label>
                 </div>
                 <input type="text" id="customTextInput1" class="text-edit-input" value="PHOTO ARTWORK">
                 
                 <div class="text-toggle-item">
-                    <input type="checkbox" id="chkCustomText2"><label>コメント 2:</label>
-                    <input type="checkbox" id="chkVert2" style="margin-left:auto;"><label>縦書き</label>
+                    <input type="checkbox" id="chkCustomText2"><label>2:</label>
+                    <input type="range" id="sizeCustom2" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
+                    <input type="checkbox" id="chkVert2" style="margin-left:4px;"><label>縦</label>
                 </div>
                 <input type="text" id="customTextInput2" class="text-edit-input" value="">
                 
                 <div class="text-toggle-item">
-                    <input type="checkbox" id="chkCustomText3"><label>コメント 3:</label>
-                    <input type="checkbox" id="chkVert3" style="margin-left:auto;"><label>縦書き</label>
+                    <input type="checkbox" id="chkCustomText3"><label>3:</label>
+                    <input type="range" id="sizeCustom3" min="10" max="100" value="28" style="width:60px; margin-left:auto;">
+                    <input type="checkbox" id="chkVert3" style="margin-left:4px;"><label>縦</label>
                 </div>
                 <input type="text" id="customTextInput3" class="text-edit-input" value="">
                 
@@ -508,10 +477,10 @@
     </div>
 
 <script>
-    // ===== SafeStorage (iOS Safari プライベートモード対応) =====
+    // ===== SafeStorage =====
     const SafeStorage = {
         get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } },
-        set(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { /* iOS プライベートモードでは失敗する場合がある */ } },
+        set(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { } },
     };
 
     // ===== UI Theme =====
@@ -566,7 +535,9 @@
     const resetImageScaleBtn = document.getElementById('resetImageScaleBtn');
     const chkShowExtractionMarkers = document.getElementById('chkShowExtractionMarkers');
     const markerSizeRow = document.getElementById('markerSizeRow');
+    const markerNumberRow = document.getElementById('markerNumberRow');
     const markerSizeRange = document.getElementById('markerSizeRange');
+    const chkMarkerNumber = document.getElementById('chkMarkerNumber');
 
     const palettePosition = document.getElementById('palettePosition');
     const paletteThickness = document.getElementById('paletteThickness');
@@ -610,7 +581,11 @@
     const exifFontNameRow = document.getElementById('exifFontNameRow');
     const exifFontNameInput = document.getElementById('exifFontNameInput');
     
-    const customFontSizeRange = document.getElementById('customFontSizeRange');
+    // コメントごとのサイズ
+    const sizeCustom1 = document.getElementById('sizeCustom1');
+    const sizeCustom2 = document.getElementById('sizeCustom2');
+    const sizeCustom3 = document.getElementById('sizeCustom3');
+    
     const exifFontSizeRange = document.getElementById('exifFontSizeRange');
     const customLetterSpacingRange = document.getElementById('customLetterSpacingRange');
     const exifLetterSpacingRange = document.getElementById('exifLetterSpacingRange');
@@ -688,7 +663,7 @@
     let cachedBgCanvas = null;
     let bgNeedsUpdate = true;
 
-    let userPresets = SafeStorage.get('studio_palette_presets_v16') || {};
+    let userPresets = SafeStorage.get('studio_palette_presets_v17') || {};
     let ratioHistory = SafeStorage.get('studio_ratio_history') || [];
     let textLayers = { 
         custom1: { x: 0.5, y: 0.81, isVert: false }, 
@@ -699,7 +674,6 @@
     };
     let activeDragKey = null;
 
-    // Canvas zoom for preview
     let canvasScale = 1;
     let lastTouchDist = null;
 
@@ -754,9 +728,11 @@
 
     chkShowExtractionMarkers.addEventListener('change', () => {
         markerSizeRow.style.display = chkShowExtractionMarkers.checked ? 'flex' : 'none';
+        markerNumberRow.style.display = chkShowExtractionMarkers.checked ? 'flex' : 'none';
         drawWorkspace();
     });
     markerSizeRange.addEventListener('input', drawWorkspace);
+    chkMarkerNumber.addEventListener('change', drawWorkspace);
 
     chkLocationGroup.addEventListener('change', () => {
         locationGroupFields.style.display = chkLocationGroup.checked ? 'block' : 'none';
@@ -766,7 +742,7 @@
 
     [palettePosition, paletteThickness, paletteGapRange, colorSpacingRange, whiteBorderRange,
      chkDrawPalette, chkShowExtractionMarkers, imageScaleRange, exportResolutionSelect,
-     customFontSizeRange, exifFontSizeRange, customLetterSpacingRange, exifLetterSpacingRange,
+     sizeCustom1, sizeCustom2, sizeCustom3, exifFontSizeRange, customLetterSpacingRange, exifLetterSpacingRange,
      textOpacityRange, textColorTypeSelect, textManualColorInput, textLineSpacingRange,
      textStrokeWidthRange, textShadowOpacityRange, textShadowBlurRange,
      hexFontSizeRange, hexLetterSpacingRange,
@@ -939,6 +915,19 @@
             const s = String(c).trim();
             if (s.length > 2 && !/^[\d\s\/\.,\-]+$/.test(s)) return s;
         }
+
+        // フォールバック: 焦点距離情報から推測して作成
+        const focal = EXIF.getTag(exifThis, "FocalLength");
+        const focal35 = EXIF.getTag(exifThis, "FocalLengthIn35mmFilm");
+        let focalStr = "";
+        if (focal) {
+            const f = focal.numerator ? focal.numerator/focal.denominator : focal;
+            focalStr = `${f}mm`;
+        } else if (focal35) {
+            focalStr = `${focal35}mm`;
+        }
+        if (focalStr) return focalStr + " Lens";
+
         return "";
     }
 
@@ -960,6 +949,41 @@
                     const exposure = EXIF.getTag(this, "ExposureTime");
                     const iso = EXIF.getTag(this, "ISOSpeedRatings");
                     const dateTime = EXIF.getTag(this, "DateTimeOriginal") || EXIF.getTag(this, "DateTime") || "";
+
+                    // GPS位置情報取得とNominatim APIによる逆ジオコーディング
+                    const latArray = EXIF.getTag(this, "GPSLatitude");
+                    const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                    const lonArray = EXIF.getTag(this, "GPSLongitude");
+                    const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+                    if (latArray && lonArray) {
+                        const toDec = (arr, ref) => {
+                            const d = arr[0].numerator ? arr[0].numerator/arr[0].denominator : arr[0];
+                            const m = arr[1].numerator ? arr[1].numerator/arr[1].denominator : arr[1];
+                            const s = arr[2].numerator ? arr[2].numerator/arr[2].denominator : arr[2];
+                            let dd = d + m/60 + s/3600;
+                            if (ref === "S" || ref === "W") dd *= -1;
+                            return dd;
+                        };
+                        const lat = toDec(latArray, latRef);
+                        const lon = toDec(lonArray, lonRef);
+
+                        // Nominatim API呼び出し (無料枠・CORS対応)
+                        fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=14&accept-language=ja`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (data && data.address) {
+                                    chkLocationGroup.checked = true;
+                                    locationGroupFields.style.display = 'block';
+                                    const country = data.address.country || "";
+                                    const state = data.address.province || data.address.state || "";
+                                    const city = data.address.city || data.address.town || data.address.village || data.address.county || "";
+                                    locationTextInput1.value = country;
+                                    locationTextInput2.value = `${state} ${city}`.trim();
+                                    drawWorkspace(); // ロード後反映
+                                }
+                            }).catch(e => { /* 無視 */ });
+                    }
 
                     const toNum = v => {
                         if (!v) return null;
@@ -1084,10 +1108,10 @@
 
     function buildSamplePixelData(canvas) {
         const sc = document.createElement('canvas');
-        sc.width = 32; sc.height = 32;
+        sc.width = 64; sc.height = 64;
         const sctx = sc.getContext('2d');
-        sctx.drawImage(canvas, 0, 0, 32, 32);
-        samplePixelData = { data: sctx.getImageData(0, 0, 32, 32).data, w: 32, h: 32 };
+        sctx.drawImage(canvas, 0, 0, 64, 64);
+        samplePixelData = { data: sctx.getImageData(0, 0, 64, 64).data, w: 64, h: 64 };
     }
 
     function sampleColorAt(nx, ny) {
@@ -1099,25 +1123,58 @@
         return '#' + [d[i], d[i+1], d[i+2]].map(v => v.toString(16).padStart(2, '0')).join('');
     }
 
-    const PATTERN_COORDS = [
-        [[.1,.1],[.5,.1],[.9,.1],[.1,.5],[.5,.5],[.9,.5],[.1,.9],[.5,.9],[.9,.9],[.3,.3]],
-        [[.2,.1],[.5,.1],[.8,.1],[.2,.3],[.5,.3],[.8,.3],[.1,.45],[.5,.45],[.9,.45],[.35,.2]],
-        [[.2,.55],[.5,.55],[.8,.55],[.2,.75],[.5,.75],[.8,.75],[.1,.9],[.5,.9],[.9,.9],[.65,.7]],
-        [[.05,.2],[.05,.5],[.05,.8],[.95,.2],[.95,.5],[.95,.8],[.5,.2],[.5,.5],[.5,.8],[.3,.5]],
-        [[.1,.1],[.3,.2],[.5,.5],[.7,.8],[.9,.9],[.9,.1],[.7,.2],[.5,.5],[.3,.8],[.1,.9]],
-    ];
-
+    // 多様な色を抽出するための FPS (Furthest Point Sampling) ロジック
     function generateFivePalettePatterns(canvas, count) {
         buildSamplePixelData(canvas);
         cachedDataBlocks  = Array.from({ length: 5 }, () => []);
         cachedPointsBlocks = Array.from({ length: 5 }, () => []);
 
+        const w = samplePixelData.w;
+        const h = samplePixelData.h;
+        const d = samplePixelData.data;
+        
+        let allPoints = [];
+        for(let y=0; y<h; y+=2) {
+            for(let x=0; x<w; x+=2) {
+                let i = (y*w + x)*4;
+                if (d[i+3] > 0) { // 透明でないピクセルのみ
+                    allPoints.push({x: x/w, y: y/h, r: d[i], g: d[i+1], b: d[i+2]});
+                }
+            }
+        }
+        if(allPoints.length === 0) allPoints.push({x: 0.5, y: 0.5, r: 128, g: 128, b: 128});
+
         for (let p = 0; p < 5; p++) {
-            const coords = PATTERN_COORDS[p];
-            for (let i = 0; i < count; i++) {
-                const [nx, ny] = coords[i % coords.length];
-                cachedDataBlocks[p].push(sampleColorAt(nx, ny));
-                cachedPointsBlocks[p].push({ x: nx, y: ny });
+            // パターンごとに乱数シード的にシャッフル
+            let pts = [...allPoints].sort(() => Math.random() - 0.5);
+            let selected = [];
+            // 最初の1点はシャッフルされた配列の先頭
+            selected.push(pts[0]);
+
+            // 2点目以降は既存の点からRGB空間での距離が最も遠い点を選ぶ
+            for(let i=1; i<count; i++) {
+                let maxDist = -1;
+                let bestPt = pts[0];
+                for(let pt of pts) {
+                    if (selected.includes(pt)) continue;
+                    let minDist = Infinity;
+                    for(let s of selected) {
+                        let dist = Math.pow(pt.r - s.r, 2) + Math.pow(pt.g - s.g, 2) + Math.pow(pt.b - s.b, 2);
+                        if (dist < minDist) minDist = dist;
+                    }
+                    if (minDist > maxDist) {
+                        maxDist = minDist;
+                        bestPt = pt;
+                    }
+                }
+                selected.push(bestPt);
+            }
+            
+            for(let i=0; i<count; i++) {
+                let pt = selected[i];
+                let hex = '#' + [pt.r, pt.g, pt.b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+                cachedDataBlocks[p].push(hex);
+                cachedPointsBlocks[p].push({ x: pt.x, y: pt.y });
             }
         }
     }
@@ -1187,13 +1244,11 @@
                 }
                 renderControlSlots(); requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
             });
-            // タッチ対応の並び替え
             setupSlotTouchSort(slot);
             sortableContainer.appendChild(slot);
         });
     }
 
-    // ===== タッチ対応 カラースロット並び替え =====
     let touchSortState = null;
 
     function setupSlotTouchSort(slot) {
@@ -1201,38 +1256,25 @@
         if (!handle) return;
         handle.addEventListener('touchstart', (e) => {
             if (e.touches.length !== 1) return;
-            e.preventDefault();
-            e.stopPropagation();
+            e.preventDefault(); e.stopPropagation();
             const touch = e.touches[0];
-            touchSortState = {
-                srcSlot: slot,
-                srcIdx: parseInt(slot.dataset.index),
-                startY: touch.clientY,
-                lastOverSlot: null,
-            };
+            touchSortState = { srcSlot: slot, srcIdx: parseInt(slot.dataset.index), startY: touch.clientY, lastOverSlot: null };
             slot.classList.add('touch-dragging');
         }, { passive: false });
 
         handle.addEventListener('touchmove', (e) => {
             if (!touchSortState || touchSortState.srcSlot !== slot) return;
-            e.preventDefault();
-            e.stopPropagation();
+            e.preventDefault(); e.stopPropagation();
             const touch = e.touches[0];
             const el = document.elementFromPoint(touch.clientX, touch.clientY);
             const overSlot = el ? el.closest('.slot') : null;
-            if (touchSortState.lastOverSlot && touchSortState.lastOverSlot !== slot) {
-                touchSortState.lastOverSlot.classList.remove('touch-drag-over');
-            }
-            if (overSlot && overSlot !== slot) {
-                overSlot.classList.add('touch-drag-over');
-                touchSortState.lastOverSlot = overSlot;
-            }
+            if (touchSortState.lastOverSlot && touchSortState.lastOverSlot !== slot) touchSortState.lastOverSlot.classList.remove('touch-drag-over');
+            if (overSlot && overSlot !== slot) { overSlot.classList.add('touch-drag-over'); touchSortState.lastOverSlot = overSlot; }
         }, { passive: false });
 
         handle.addEventListener('touchend', (e) => {
             if (!touchSortState || touchSortState.srcSlot !== slot) return;
-            e.preventDefault();
-            slot.classList.remove('touch-dragging');
+            e.preventDefault(); slot.classList.remove('touch-dragging');
             if (touchSortState.lastOverSlot) {
                 touchSortState.lastOverSlot.classList.remove('touch-drag-over');
                 const targetIdx = parseInt(touchSortState.lastOverSlot.dataset.index);
@@ -1242,14 +1284,8 @@
                     selectedColors.splice(targetIdx, 0, movedColor);
                     const pts = cachedPointsBlocks[palettePatternIndex];
                     const cols = cachedDataBlocks[palettePatternIndex];
-                    if (pts && pts.length > Math.max(srcIdx, targetIdx)) {
-                        const movedPt = pts.splice(srcIdx, 1)[0];
-                        pts.splice(targetIdx, 0, movedPt);
-                    }
-                    if (cols && cols.length > Math.max(srcIdx, targetIdx)) {
-                        const movedCol = cols.splice(srcIdx, 1)[0];
-                        cols.splice(targetIdx, 0, movedCol);
-                    }
+                    if (pts && pts.length > Math.max(srcIdx, targetIdx)) { const movedPt = pts.splice(srcIdx, 1)[0]; pts.splice(targetIdx, 0, movedPt); }
+                    if (cols && cols.length > Math.max(srcIdx, targetIdx)) { const movedCol = cols.splice(srcIdx, 1)[0]; cols.splice(targetIdx, 0, movedCol); }
                     renderControlSlots(); requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
                 }
             }
@@ -1298,30 +1334,19 @@
 
         const n = colors.length;
         let stops;
-        if (gradientPatternIndex === 0) {
-            stops = [...colors];
-        } else if (gradientPatternIndex === 1) {
-            stops = [...colors].reverse();
-        } else if (gradientPatternIndex === 2) {
-            stops = [...colors, ...[...colors].reverse()];
-        } else if (gradientPatternIndex === 3) {
-            stops = colors.filter((_, i) => i % 2 === 0);
-            if (stops.length < 2) stops = [...colors];
-        } else {
-            const odd = colors.filter((_, i) => i % 2 !== 0);
-            const even = colors.filter((_, i) => i % 2 === 0);
-            stops = [...odd, ...even];
-        }
+        if (gradientPatternIndex === 0) { stops = [...colors]; } 
+        else if (gradientPatternIndex === 1) { stops = [...colors].reverse(); } 
+        else if (gradientPatternIndex === 2) { stops = [...colors, ...[...colors].reverse()]; } 
+        else if (gradientPatternIndex === 3) { stops = colors.filter((_, i) => i % 2 === 0); if (stops.length < 2) stops = [...colors]; } 
+        else { const odd = colors.filter((_, i) => i % 2 !== 0); const even = colors.filter((_, i) => i % 2 === 0); stops = [...odd, ...even]; }
         if (stops.length < 2) stops = [stops[0], stops[0]];
 
         stops.forEach((col, i) => grad.addColorStop(i / (stops.length - 1), col));
-        targetCtx.fillStyle = grad;
-        targetCtx.fillRect(0, 0, width, height);
+        targetCtx.fillStyle = grad; targetCtx.fillRect(0, 0, width, height);
 
         if (width <= 2400) {
             try {
-                const imgData = targetCtx.getImageData(0, 0, width, height);
-                const data = imgData.data;
+                const imgData = targetCtx.getImageData(0, 0, width, height); const data = imgData.data;
                 for (let i = 0; i < data.length; i += 4) {
                     const noise = (Math.random() - 0.5) * 4;
                     data[i]   = Math.min(255, Math.max(0, data[i]   + noise));
@@ -1331,43 +1356,21 @@
                 targetCtx.putImageData(imgData, 0, 0);
             } catch(e) { }
         }
-
-        targetCtx.fillStyle = "rgba(0,0,0,0.10)";
-        targetCtx.fillRect(0, 0, width, height);
+        targetCtx.fillStyle = "rgba(0,0,0,0.10)"; targetCtx.fillRect(0, 0, width, height);
     }
 
-    // 新規実装: 画像由来のフラットなモザイク背景
     function drawMosaicBackground(targetCtx, width, height, blockSize, srcImage) {
         if (!srcImage) return;
         if (blockSize < 1) blockSize = 1;
-
-        const cols = Math.ceil(width / blockSize);
-        const rows = Math.ceil(height / blockSize);
-
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = cols;
-        tempCanvas.height = rows;
-        const tCtx = tempCanvas.getContext('2d');
-
-        // 背景を埋め尽くすようにアスペクト比を保ちつつ描画
-        const imgW = srcImage.width || srcImage.videoWidth || cols;
-        const imgH = srcImage.height || srcImage.videoHeight || rows;
-        const scale = Math.max(cols / imgW, rows / imgH);
-        const dw = imgW * scale;
-        const dh = imgH * scale;
-        const dx = (cols - dw) / 2;
-        const dy = (rows - dh) / 2;
-
+        const cols = Math.ceil(width / blockSize); const rows = Math.ceil(height / blockSize);
+        const tempCanvas = document.createElement('canvas'); tempCanvas.width = cols; tempCanvas.height = rows; const tCtx = tempCanvas.getContext('2d');
+        const imgW = srcImage.width || srcImage.videoWidth || cols; const imgH = srcImage.height || srcImage.videoHeight || rows;
+        const scale = Math.max(cols / imgW, rows / imgH); const dw = imgW * scale; const dh = imgH * scale; const dx = (cols - dw) / 2; const dy = (rows - dh) / 2;
         tCtx.drawImage(srcImage, dx, dy, dw, dh);
-
-        // スムージングをオフにして引き伸ばすことでフラットな四角（ピクセル）を生成
         targetCtx.imageSmoothingEnabled = false;
         targetCtx.drawImage(tempCanvas, 0, 0, cols, rows, 0, 0, cols * blockSize, rows * blockSize);
         targetCtx.imageSmoothingEnabled = true;
-
-        // メイン画像を際立たせるための微小な暗いオーバーレイ
-        targetCtx.fillStyle = 'rgba(0,0,0,0.15)';
-        targetCtx.fillRect(0, 0, width, height);
+        targetCtx.fillStyle = 'rgba(0,0,0,0.15)'; targetCtx.fillRect(0, 0, width, height);
     }
 
     function drawBackground(targetCtx, w, h, srcImage) {
@@ -1396,8 +1399,7 @@
         const r = parseInt(hex.substring(1, 3), 16), g = parseInt(hex.substring(3, 5), 16), b = parseInt(hex.substring(5, 7), 16);
         ctx.fillStyle = (r * 0.299 + g * 0.587 + b * 0.114) > 150 ? "#000000" : "#ffffff";
         const chars = hex.toUpperCase().split("");
-        let totalW = 0;
-        chars.forEach((c, ci) => { totalW += ctx.measureText(c).width + (ci < chars.length - 1 ? hexSpacing : 0); });
+        let totalW = 0; chars.forEach((c, ci) => { totalW += ctx.measureText(c).width + (ci < chars.length - 1 ? hexSpacing : 0); });
         let cx2 = bx + bw / 2 - totalW / 2, cy2 = by + bh / 2;
         chars.forEach(c => { ctx.fillText(c, cx2, cy2); cx2 += ctx.measureText(c).width + hexSpacing; });
     }
@@ -1459,27 +1461,14 @@
             const userImageScale = parseFloat(imageScaleRange.value) / 100;
             let availableWidth = width - (margin * 2) - (whiteBorderThickness * 2);
             let availableHeight = height - (margin * 2) - (whiteBorderThickness * 2);
-            if (isHorizontalPalette) {
-                availableHeight -= paletteSize + gap;
-                if (pos === 'top-bottom') availableHeight -= paletteSize + gap;
-            } else {
-                availableWidth -= paletteSize + gap;
-                if (pos === 'left-right') availableWidth -= paletteSize + gap;
-            }
+            if (isHorizontalPalette) { availableHeight -= paletteSize + gap; if (pos === 'top-bottom') availableHeight -= paletteSize + gap; } 
+            else { availableWidth -= paletteSize + gap; if (pos === 'left-right') availableWidth -= paletteSize + gap; }
 
-            let imgH2 = availableHeight * userImageScale;
-            let imgW2 = imgH2 * userTargetRatio;
-            if (imgW2 > availableWidth * userImageScale) {
-                imgW2 = availableWidth * userImageScale;
-                imgH2 = imgW2 / userTargetRatio;
-            }
+            let imgH2 = availableHeight * userImageScale; let imgW2 = imgH2 * userTargetRatio;
+            if (imgW2 > availableWidth * userImageScale) { imgW2 = availableWidth * userImageScale; imgH2 = imgW2 / userTargetRatio; }
             imgWidth = imgW2; imgHeight = imgH2;
-            imgX = (width - imgWidth) / 2;
-            imgY = (height - imgHeight) / 2;
-            if (paletteDrawEnabled) {
-                if (pos === 'bottom') imgY -= (paletteSize + gap) / 2;
-                else if (pos === 'top') imgY += (paletteSize + gap) / 2;
-            }
+            imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
+            if (paletteDrawEnabled) { if (pos === 'bottom') imgY -= (paletteSize + gap) / 2; else if (pos === 'top') imgY += (paletteSize + gap) / 2; }
 
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
 
@@ -1497,8 +1486,7 @@
                 const sw = hqCropData.width * imageScaleRatioX, sh = hqCropData.height * imageScaleRatioY;
                 targetCtx.drawImage(rawOriginalImage, sx, sy2, sw, sh, imgX, imgY, imgWidth, imgHeight);
             } else {
-                const src = activeImage || croppedCanvas;
-                if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
+                const src = activeImage || croppedCanvas; if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
             }
             targetCtx.shadowColor = "transparent"; targetCtx.shadowBlur = 0; targetCtx.shadowOffsetY = 0;
 
@@ -1508,13 +1496,8 @@
                 else if (pos === 'left') palettesToDraw.push({ x: imgX - gap - paletteSize, y: imgY, isHoriz: false });
                 else if (pos === 'bottom') palettesToDraw.push({ x: imgX, y: imgY + imgHeight + gap, isHoriz: true });
                 else if (pos === 'top') palettesToDraw.push({ x: imgX, y: imgY - gap - paletteSize, isHoriz: true });
-                else if (pos === 'top-bottom') {
-                    palettesToDraw.push({ x: imgX, y: imgY - gap - paletteSize, isHoriz: true });
-                    palettesToDraw.push({ x: imgX, y: imgY + imgHeight + gap, isHoriz: true });
-                } else if (pos === 'left-right') {
-                    palettesToDraw.push({ x: imgX - gap - paletteSize, y: imgY, isHoriz: false });
-                    palettesToDraw.push({ x: imgX + imgWidth + gap, y: imgY, isHoriz: false });
-                }
+                else if (pos === 'top-bottom') { palettesToDraw.push({ x: imgX, y: imgY - gap - paletteSize, isHoriz: true }); palettesToDraw.push({ x: imgX, y: imgY + imgHeight + gap, isHoriz: true }); } 
+                else if (pos === 'left-right') { palettesToDraw.push({ x: imgX - gap - paletteSize, y: imgY, isHoriz: false }); palettesToDraw.push({ x: imgX + imgWidth + gap, y: imgY, isHoriz: false }); }
             }
 
             palettesToDraw.forEach(pal => {
@@ -1522,8 +1505,7 @@
                     targetCtx.fillStyle = selectedColors[i];
                     const offset = i * (singleBlockLength + finalSpacing);
                     let bx = pal.x, by = pal.y, bw = paletteSize, bh = singleBlockLength;
-                    if (pal.isHoriz) { bx = pal.x + offset; bw = singleBlockLength; bh = paletteSize; }
-                    else { by = pal.y + offset; }
+                    if (pal.isHoriz) { bx = pal.x + offset; bw = singleBlockLength; bh = paletteSize; } else { by = pal.y + offset; }
                     targetCtx.fillRect(bx, by, bw + 0.5, bh + 0.5);
                     drawHexLabel(targetCtx, selectedColors[i], bx, by, bw, bh);
                 }
@@ -1537,19 +1519,15 @@
             const rawSpacing = Math.round(minDim * (parseFloat(colorSpacingRange.value) / 1000));
 
             if (isSimpleMode) {
-                imgX = 0; imgY = 0; imgWidth = width; imgHeight = height;
-                targetCtx.clearRect(0, 0, width, height);
+                imgX = 0; imgY = 0; imgWidth = width; imgHeight = height; targetCtx.clearRect(0, 0, width, height);
             } else {
                 const userImageScale = parseFloat(imageScaleRange.value) / 100;
                 const margin = Math.round(minDim * 0.06);
                 let availableWidth = width - (margin * 2) - (whiteBorderThickness * 2);
                 let availableHeight = height - (margin * 2) - (whiteBorderThickness * 2);
-                let iH = availableHeight * userImageScale;
-                let iW = iH * userTargetRatio;
+                let iH = availableHeight * userImageScale; let iW = iH * userTargetRatio;
                 if (iW > availableWidth * userImageScale) { iW = availableWidth * userImageScale; iH = iW / userTargetRatio; }
-                imgWidth = iW; imgHeight = iH;
-                imgX = (width - imgWidth) / 2;
-                imgY = (height - imgHeight) / 2;
+                imgWidth = iW; imgHeight = iH; imgX = (width - imgWidth) / 2; imgY = (height - imgHeight) / 2;
             }
 
             if (!isHighRes) lastImgBounds = { x: imgX, y: imgY, w: imgWidth, h: imgHeight };
@@ -1559,8 +1537,7 @@
                 const sw = hqCropData.width * imageScaleRatioX, sh = hqCropData.height * imageScaleRatioY;
                 targetCtx.drawImage(rawOriginalImage, sx, sy2, sw, sh, imgX, imgY, imgWidth, imgHeight);
             } else {
-                const src = activeImage || croppedCanvas;
-                if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
+                const src = activeImage || croppedCanvas; if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
             }
 
             if (paletteDrawEnabled) {
@@ -1572,12 +1549,9 @@
                 let finalSpacing = rawSpacing;
 
                 const parallelLen = isHoriz ? imgWidth * ovWidthRatio : imgHeight * ovWidthRatio;
-                const parallelOffset = isHoriz
-                    ? imgX + (imgWidth - parallelLen) / 2
-                    : imgY + (imgHeight - parallelLen) / 2;
+                const parallelOffset = isHoriz ? imgX + (imgWidth - parallelLen) / 2 : imgY + (imgHeight - parallelLen) / 2;
 
-                if (finalSpacing * (totalColors - 1) >= parallelLen * 0.6)
-                    finalSpacing = Math.floor((parallelLen * 0.6) / Math.max(totalColors - 1, 1));
+                if (finalSpacing * (totalColors - 1) >= parallelLen * 0.6) finalSpacing = Math.floor((parallelLen * 0.6) / Math.max(totalColors - 1, 1));
                 const blockLen = (parallelLen - finalSpacing * (totalColors - 1)) / totalColors;
 
                 let perpAnchor;
@@ -1586,25 +1560,17 @@
                 else if (ovDir === 'right') perpAnchor = imgX + imgWidth - palThick - insetPx;
                 else perpAnchor = imgX + insetPx;
 
-                targetCtx.save();
-                targetCtx.globalAlpha = ovOpacity;
+                targetCtx.save(); targetCtx.globalAlpha = ovOpacity;
 
                 for (let i = 0; i < totalColors; i++) {
                     targetCtx.fillStyle = selectedColors[i];
                     const off = i * (blockLen + finalSpacing);
                     let bx, by, bw, bh;
-                    if (isHoriz) {
-                        bx = parallelOffset + off; by = perpAnchor;
-                        bw = blockLen; bh = palThick;
-                    } else {
-                        bx = perpAnchor; by = parallelOffset + off;
-                        bw = palThick; bh = blockLen;
-                    }
+                    if (isHoriz) { bx = parallelOffset + off; by = perpAnchor; bw = blockLen; bh = palThick; } 
+                    else { bx = perpAnchor; by = parallelOffset + off; bw = palThick; bh = blockLen; }
                     targetCtx.fillRect(bx, by, bw + 0.5, bh + 0.5);
 
-                    targetCtx.globalAlpha = 1.0;
-                    drawHexLabel(targetCtx, selectedColors[i], bx, by, bw, bh);
-                    targetCtx.globalAlpha = ovOpacity;
+                    targetCtx.globalAlpha = 1.0; drawHexLabel(targetCtx, selectedColors[i], bx, by, bw, bh); targetCtx.globalAlpha = ovOpacity;
                 }
                 targetCtx.restore();
             }
@@ -1613,6 +1579,7 @@
         if (chkShowExtractionMarkers.checked && !isHighRes && !isSimpleMode) {
             const pts = cachedPointsBlocks[palettePatternIndex];
             const markerR = parseInt(markerSizeRange.value);
+            const showNum = chkMarkerNumber.checked;
             if (pts) {
                 for (let i = 0; i < totalColors; i++) {
                     if (!pts[i]) continue;
@@ -1620,35 +1587,16 @@
                     const my = imgY + pts[i].y * imgHeight;
                     const isDragging = (activeMarkerDragIndex === i);
 
-                    if (isDragging) {
-                        targetCtx.beginPath();
-                        targetCtx.arc(mx, my, markerR + 5, 0, Math.PI * 2);
-                        targetCtx.fillStyle = 'rgba(255,255,255,0.25)';
-                        targetCtx.fill();
-                    }
+                    if (isDragging) { targetCtx.beginPath(); targetCtx.arc(mx, my, markerR + 5, 0, Math.PI * 2); targetCtx.fillStyle = 'rgba(255,255,255,0.25)'; targetCtx.fill(); }
+                    targetCtx.beginPath(); targetCtx.arc(mx, my, markerR + 2.5, 0, Math.PI * 2); targetCtx.fillStyle = isDragging ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.35)'; targetCtx.fill();
+                    targetCtx.beginPath(); targetCtx.arc(mx, my, markerR, 0, Math.PI * 2); targetCtx.fillStyle = selectedColors[i]; targetCtx.fill();
 
-                    targetCtx.beginPath();
-                    targetCtx.arc(mx, my, markerR + 2.5, 0, Math.PI * 2);
-                    targetCtx.fillStyle = isDragging ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.35)';
-                    targetCtx.fill();
+                    targetCtx.lineWidth = isDragging ? 3.5 : 2.5; targetCtx.strokeStyle = isDragging ? '#ffffff' : 'rgba(255,255,255,0.92)'; targetCtx.stroke();
 
-                    targetCtx.beginPath();
-                    targetCtx.arc(mx, my, markerR, 0, Math.PI * 2);
-                    targetCtx.fillStyle = selectedColors[i];
-                    targetCtx.fill();
-
-                    targetCtx.lineWidth = isDragging ? 3.5 : 2.5;
-                    targetCtx.strokeStyle = isDragging ? '#ffffff' : 'rgba(255,255,255,0.92)';
-                    targetCtx.stroke();
-
-                    if (markerR >= 7) {
-                        const labelR = parseInt(selectedColors[i].substring(1,3),16);
-                        const labelG = parseInt(selectedColors[i].substring(3,5),16);
-                        const labelB = parseInt(selectedColors[i].substring(5,7),16);
+                    if (markerR >= 7 && showNum) {
+                        const labelR = parseInt(selectedColors[i].substring(1,3),16); const labelG = parseInt(selectedColors[i].substring(3,5),16); const labelB = parseInt(selectedColors[i].substring(5,7),16);
                         const lum = labelR*0.299 + labelG*0.587 + labelB*0.114;
-                        targetCtx.font = `bold ${Math.round(markerR * 1.1)}px Helvetica, sans-serif`;
-                        targetCtx.textBaseline = 'middle';
-                        targetCtx.textAlign = 'center';
+                        targetCtx.font = `bold ${Math.round(markerR * 1.1)}px Helvetica, sans-serif`; targetCtx.textBaseline = 'middle'; targetCtx.textAlign = 'center';
                         targetCtx.fillStyle = lum > 128 ? 'rgba(0,0,0,0.75)' : 'rgba(255,255,255,0.9)';
                         targetCtx.fillText(i + 1, mx, my);
                     }
@@ -1658,15 +1606,12 @@
 
         if (!isSimpleMode && whiteBorderThickness > 0) {
             targetCtx.fillStyle = "#ffffff";
-            targetCtx.fillRect(0,0,width,whiteBorderThickness);
-            targetCtx.fillRect(0,height-whiteBorderThickness,width,whiteBorderThickness);
-            targetCtx.fillRect(0,0,whiteBorderThickness,height);
-            targetCtx.fillRect(width-whiteBorderThickness,0,whiteBorderThickness,height);
+            targetCtx.fillRect(0,0,width,whiteBorderThickness); targetCtx.fillRect(0,height-whiteBorderThickness,width,whiteBorderThickness);
+            targetCtx.fillRect(0,0,whiteBorderThickness,height); targetCtx.fillRect(width-whiteBorderThickness,0,whiteBorderThickness,height);
         }
 
         if (!isSimpleMode) {
         const scale = minDim / 1200;
-        const commentFontRealSize = Math.round(parseFloat(customFontSizeRange.value) * scale);
         const exifFontRealSize = Math.round(parseFloat(exifFontSizeRange.value) * scale);
         const opacityVal = parseFloat(textOpacityRange.value) / 100;
         const shadowOp = parseFloat(textShadowOpacityRange.value) / 100;
@@ -1683,8 +1628,7 @@
             if (mode === 'gradient') {
                 if (selectedColors.length < 2) return `rgba(255,255,255,${opacityVal})`;
                 let tGrad;
-                if (isVert) tGrad = targetCtx.createLinearGradient(0, startPos, 0, startPos + totalLen);
-                else tGrad = targetCtx.createLinearGradient(startPos, 0, startPos + totalLen, 0);
+                if (isVert) tGrad = targetCtx.createLinearGradient(0, startPos, 0, startPos + totalLen); else tGrad = targetCtx.createLinearGradient(startPos, 0, startPos + totalLen, 0);
                 selectedColors.forEach((col, cIdx) => { tGrad.addColorStop(cIdx / (selectedColors.length - 1), col); }); 
                 return tGrad;
             }
@@ -1704,12 +1648,8 @@
             let alignX = cx < 0.45 ? "left" : (cx > 0.55 ? "right" : "center");
             let alignY = cy < 0.45 ? "top" : (cy > 0.55 ? "bottom" : "center");
             
-            if (isVert) {
-                targetCtx.textAlign = "center";
-                if (alignY === "center") startY -= totalH / 2; else if (alignY === "bottom") startY -= totalH;
-            } else {
-                if (alignX === "center") startX -= totalW / 2; else if (alignX === "right") startX -= totalW;
-            }
+            if (isVert) { targetCtx.textAlign = "center"; if (alignY === "center") startY -= totalH / 2; else if (alignY === "bottom") startY -= totalH; } 
+            else { if (alignX === "center") startX -= totalW / 2; else if (alignX === "right") startX -= totalW; }
 
             targetCtx.lineJoin = "round";
 
@@ -1724,26 +1664,21 @@
                 targetCtx.shadowColor = "transparent"; targetCtx.shadowBlur = 0; 
             }
 
-            if (strokeColor === 'none' || strokeWidth <= 0) {
-                targetCtx.shadowColor = `rgba(0,0,0,${shadowOp})`; targetCtx.shadowBlur = shadowBlur; 
-            } else {
-                targetCtx.shadowColor = "transparent"; targetCtx.shadowBlur = 0; 
-            }
+            if (strokeColor === 'none' || strokeWidth <= 0) { targetCtx.shadowColor = `rgba(0,0,0,${shadowOp})`; targetCtx.shadowBlur = shadowBlur; } 
+            else { targetCtx.shadowColor = "transparent"; targetCtx.shadowBlur = 0; }
 
-            targetCtx.globalAlpha = opacityVal;
-            targetCtx.fillStyle = setupTextColorMode(isVert ? startY : startX, isVert ? totalH : totalW, isVert); 
+            targetCtx.globalAlpha = opacityVal; targetCtx.fillStyle = setupTextColorMode(isVert ? startY : startX, isVert ? totalH : totalW, isVert); 
             let cur = isVert ? startY + fSize / 2 : startX;
             chars.forEach((c) => { 
-                if (isVert) { targetCtx.fillText(c, cx * width, cur); cur += fSize + tracking; }
-                else { targetCtx.fillText(c, cur, cy * height); cur += targetCtx.measureText(c).width + tracking; }
+                if (isVert) { targetCtx.fillText(c, cx * width, cur); cur += fSize + tracking; } else { targetCtx.fillText(c, cur, cy * height); cur += targetCtx.measureText(c).width + tracking; }
             }); 
             targetCtx.globalAlpha = 1.0; targetCtx.shadowColor = "transparent"; targetCtx.shadowBlur = 0;
         };
 
         const cSpace = parseFloat(customLetterSpacingRange.value);
-        if (chkCustomText1.checked) drawTextAdvanced(customTextInput1.value, textLayers.custom1.x, textLayers.custom1.y, commentFontRealSize, currentCustomFont, cSpace, chkVert1.checked);
-        if (chkCustomText2.checked) drawTextAdvanced(customTextInput2.value, textLayers.custom2.x, textLayers.custom2.y, commentFontRealSize, currentCustomFont, cSpace, chkVert2.checked);
-        if (chkCustomText3.checked) drawTextAdvanced(customTextInput3.value, textLayers.custom3.x, textLayers.custom3.y, commentFontRealSize, currentCustomFont, cSpace, chkVert3.checked);
+        if (chkCustomText1.checked) drawTextAdvanced(customTextInput1.value, textLayers.custom1.x, textLayers.custom1.y, Math.round(parseFloat(sizeCustom1.value) * scale), currentCustomFont, cSpace, chkVert1.checked);
+        if (chkCustomText2.checked) drawTextAdvanced(customTextInput2.value, textLayers.custom2.x, textLayers.custom2.y, Math.round(parseFloat(sizeCustom2.value) * scale), currentCustomFont, cSpace, chkVert2.checked);
+        if (chkCustomText3.checked) drawTextAdvanced(customTextInput3.value, textLayers.custom3.x, textLayers.custom3.y, Math.round(parseFloat(sizeCustom3.value) * scale), currentCustomFont, cSpace, chkVert3.checked);
         
         const exifStrings = [];
         if (chkCamera.checked && cameraTextInput.value) exifStrings.push(cameraTextInput.value);
@@ -1786,21 +1721,21 @@
             overlayOpacity: overlayOpacityRange.value, overlayWidth: overlayWidthRange.value, overlayThickness: overlayThicknessRange.value, overlayInset: overlayInsetRange.value, simpleMode: chkSimpleMode.checked,
             hexFont: hexFontSelect.value, hexCustomFont: hexFontNameInput.value, hexFontSize: hexFontSizeRange.value, hexLetterSpacing: hexLetterSpacingRange.value,
             cFont: customFontSelect.value, cCustomFont: customFontNameInput.value, eFont: exifFontSelect.value, eCustomFont: exifFontNameInput.value,
-            cFontSize: customFontSizeRange.value, eFontSize: exifFontSizeRange.value, opacity: textOpacityRange.value, cType: textColorTypeSelect.value, mColor: textManualColorInput.value,
+            eFontSize: exifFontSizeRange.value, opacity: textOpacityRange.value, cType: textColorTypeSelect.value, mColor: textManualColorInput.value,
             cLetterSpacing: customLetterSpacingRange.value, eLetterSpacing: exifLetterSpacingRange.value,
             lineSpacing: textLineSpacingRange.value, bgMode: bgModeSelect.value, bgManualColor: bgManualColorInput.value, pSize: densitySizeRange.value, uiTheme: uiThemeSelect.value,
             strokeColor: textStrokeColorSelect.value, strokeWidth: textStrokeWidthRange.value, shadowOp: textShadowOpacityRange.value, shadowBlur: textShadowBlurRange.value,
-            bgAngle: bgGradientAngleRange.value, imgScale: imageScaleRange.value, showMarker: chkShowExtractionMarkers.checked, markerSize: markerSizeRange.value,
+            bgAngle: bgGradientAngleRange.value, imgScale: imageScaleRange.value, showMarker: chkShowExtractionMarkers.checked, markerSize: markerSizeRange.value, markerNum: chkMarkerNumber.checked,
             customTexts: [
-                { text: customTextInput1.value, chk: chkCustomText1.checked, vert: chkVert1.checked, x: textLayers.custom1.x, y: textLayers.custom1.y },
-                { text: customTextInput2.value, chk: chkCustomText2.checked, vert: chkVert2.checked, x: textLayers.custom2.x, y: textLayers.custom2.y },
-                { text: customTextInput3.value, chk: chkCustomText3.checked, vert: chkVert3.checked, x: textLayers.custom3.x, y: textLayers.custom3.y },
+                { text: customTextInput1.value, chk: chkCustomText1.checked, vert: chkVert1.checked, x: textLayers.custom1.x, y: textLayers.custom1.y, size: sizeCustom1.value },
+                { text: customTextInput2.value, chk: chkCustomText2.checked, vert: chkVert2.checked, x: textLayers.custom2.x, y: textLayers.custom2.y, size: sizeCustom2.value },
+                { text: customTextInput3.value, chk: chkCustomText3.checked, vert: chkVert3.checked, x: textLayers.custom3.x, y: textLayers.custom3.y, size: sizeCustom3.value },
             ],
             chk: { exifGroup: chkExifGroup.checked, camera: chkCamera.checked, lens: chkLens.checked, settings: chkSettings.checked, date: chkDate.checked },
             coords: { exifGroup: {x: textLayers.exifGroup.x, y: textLayers.exifGroup.y}, locationGroup: {x: textLayers.locationGroup.x, y: textLayers.locationGroup.y} },
             locationGroup: { show: chkLocationGroup.checked, l1chk: chkLocation1.checked, l2chk: chkLocation2.checked, l1: locationTextInput1.value, l2: locationTextInput2.value }
         };
-        SafeStorage.set('studio_palette_presets_v16', userPresets);
+        SafeStorage.set('studio_palette_presets_v17', userPresets);
         newPresetName.value = ""; loadPresetList(); presetSelect.value = name;
         alert(`プリセット「${name}」を保存しました。`);
     });
@@ -1808,7 +1743,7 @@
     deletePresetBtn.addEventListener('click', () => {
         const name = presetSelect.value; if (name === 'default') return;
         if (confirm(`プリセット「${name}」を消去しますか？`)) {
-            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v16', userPresets); loadPresetList(); drawWorkspace();
+            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v17', userPresets); loadPresetList(); drawWorkspace();
         }
     });
 
@@ -1827,7 +1762,9 @@
         hexFontSizeRange.value = d.hexFontSize || 22; hexLetterSpacingRange.value = d.hexLetterSpacing || 1;
         chkDrawPalette.checked = d.chkDrawPalette ?? true;
         chkShowExtractionMarkers.checked = d.showMarker ?? false; markerSizeRow.style.display = chkShowExtractionMarkers.checked ? 'flex' : 'none';
+        markerNumberRow.style.display = chkShowExtractionMarkers.checked ? 'flex' : 'none';
         markerSizeRange.value = d.markerSize || 8;
+        chkMarkerNumber.checked = d.markerNum ?? true;
         bgGradientAngleRange.value = d.bgAngle || 180; imageScaleRange.value = d.imgScale || 100;
         bgModeSelect.value = d.bgMode || "gradient"; bgManualColorInput.value = d.bgManualColor || "#ffffff";
         densitySizeRange.value = d.pSize || 35;
@@ -1841,15 +1778,15 @@
         }
         textStrokeColorSelect.value = d.strokeColor || "none"; textStrokeWidthRow.style.display = textStrokeColorSelect.value !== 'none' ? 'flex' : 'none';
         textStrokeWidthRange.value = d.strokeWidth || 4; textShadowOpacityRange.value = d.shadowOp || 35; textShadowBlurRange.value = d.shadowBlur || 4;
-        customFontSizeRange.value = d.cFontSize || 28; exifFontSizeRange.value = d.eFontSize || 20; textOpacityRange.value = d.opacity || 85;
+        exifFontSizeRange.value = d.eFontSize || 20; textOpacityRange.value = d.opacity || 85;
         textColorTypeSelect.value = d.cType || "white"; textManualColorInput.value = d.mColor || "#ffffff"; textCustomColorRow.style.display = (textColorTypeSelect.value === 'dropper') ? 'flex' : 'none';
         customLetterSpacingRange.value = d.cLetterSpacing || 1; exifLetterSpacingRange.value = d.eLetterSpacing || 1;
         textLineSpacingRange.value = d.lineSpacing;
         if (d.chk) { chkExifGroup.checked = d.chk.exifGroup ?? true; chkCamera.checked = d.chk.camera ?? true; chkLens.checked = d.chk.lens ?? true; chkSettings.checked = d.chk.settings ?? true; chkDate.checked = d.chk.date ?? true; }
         if (d.customTexts) {
-            customTextInput1.value = d.customTexts[0].text; chkCustomText1.checked = d.customTexts[0].chk; chkVert1.checked = d.customTexts[0].vert; textLayers.custom1.x = d.customTexts[0].x; textLayers.custom1.y = d.customTexts[0].y;
-            customTextInput2.value = d.customTexts[1].text; chkCustomText2.checked = d.customTexts[1].chk; chkVert2.checked = d.customTexts[1].vert; textLayers.custom2.x = d.customTexts[1].x; textLayers.custom2.y = d.customTexts[1].y;
-            customTextInput3.value = d.customTexts[2].text; chkCustomText3.checked = d.customTexts[2].chk; chkVert3.checked = d.customTexts[2].vert; textLayers.custom3.x = d.customTexts[2].x; textLayers.custom3.y = d.customTexts[2].y;
+            customTextInput1.value = d.customTexts[0].text; chkCustomText1.checked = d.customTexts[0].chk; chkVert1.checked = d.customTexts[0].vert; textLayers.custom1.x = d.customTexts[0].x; textLayers.custom1.y = d.customTexts[0].y; sizeCustom1.value = d.customTexts[0].size || 28;
+            customTextInput2.value = d.customTexts[1].text; chkCustomText2.checked = d.customTexts[1].chk; chkVert2.checked = d.customTexts[1].vert; textLayers.custom2.x = d.customTexts[1].x; textLayers.custom2.y = d.customTexts[1].y; sizeCustom2.value = d.customTexts[1].size || 28;
+            customTextInput3.value = d.customTexts[2].text; chkCustomText3.checked = d.customTexts[2].chk; chkVert3.checked = d.customTexts[2].vert; textLayers.custom3.x = d.customTexts[2].x; textLayers.custom3.y = d.customTexts[2].y; sizeCustom3.value = d.customTexts[2].size || 28;
         }
         if (d.coords) { textLayers.exifGroup.x = d.coords.exifGroup.x; textLayers.exifGroup.y = d.coords.exifGroup.y; if(d.coords.locationGroup) { textLayers.locationGroup.x = d.coords.locationGroup.x; textLayers.locationGroup.y = d.coords.locationGroup.y; } }
         if (d.locationGroup) {
@@ -2009,13 +1946,11 @@
         canvasScale = 1; viewCanvas.style.transform = 'scale(1)';
     });
 
-    // ===== エクスポート周りの改修 (iOS Chrome対応) =====
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-    const isCriOS = navigator.userAgent.match('CriOS'); // iOS Chrome判定
+    const isCriOS = navigator.userAgent.match('CriOS');
 
     const iosShareBtn = document.getElementById('iosShareBtn');
 
-    // モバイル端末向けに共有ボタンを表示
     if (navigator.share) {
         iosShareBtn.style.display = 'block';
     }
@@ -2028,7 +1963,6 @@
 
         const blob = await new Promise(resolve => canvas.toBlob(resolve, mimeType, quality));
 
-        // PCブラウザ用 (File System Access API)
         if (window.showSaveFilePicker && !isIOS && !isCriOS) {
             try {
                 const handle = await window.showSaveFilePicker({
@@ -2045,11 +1979,10 @@
             }
         }
 
-        // iOS Chrome/Safari, Android向けフォールバック処理 (通常のダウンロード)
         const link = document.createElement('a');
         link.download = filename;
         link.href = URL.createObjectURL(blob);
-        document.body.appendChild(link); // 動作を安定させるためDOMに追加
+        document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(link.href), 1000);
@@ -2074,7 +2007,6 @@
                     return;
                 } catch (err) {
                     if (err.name !== 'AbortError') {
-                        // ユーザーによるキャンセル以外はエラーをコンソールに出力
                         console.error('Share failed', err);
                     }
                     return;
@@ -2091,7 +2023,6 @@
         const format = (currentMode === 'none' || simpleActive) ? 'png' : exportFormatSelect.value;
         let targetRes = parseInt(exportResolutionSelect.value);
         
-        // iOS Safari/Chrome: キャンバスの最大ピクセル数制限の回避
         if (isIOS) {
             const maxPx = 4096;
             if (targetRes > maxPx) {
@@ -2117,7 +2048,6 @@
         const format = (currentMode === 'none' || simpleActive) ? 'png' : exportFormatSelect.value;
         let targetRes = parseInt(exportResolutionSelect.value);
         
-        // 共有時はファイルサイズを考慮して最大解像度を制限
         if (targetRes > 4096) targetRes = 4096;
 
         loadingOverlay.style.display = 'flex'; loadingText.textContent = "Rendering...";
