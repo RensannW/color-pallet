@@ -581,6 +581,7 @@
 
     // ===== 過去バージョンからのデータ移行（マイグレーション） =====
     let userPresets = SafeStorage.get(PRESETS_KEY) ||
+                      SafeStorage.get('studio_palette_presets_v26') ||
                       SafeStorage.get('studio_palette_presets_v25') || 
                       SafeStorage.get('studio_palette_presets_v24') ||
                       SafeStorage.get('studio_palette_presets_v23') ||
@@ -592,10 +593,8 @@
                       SafeStorage.get('studio_palette_presets_v17') ||
                       SafeStorage.get('studio_palette_presets_v16') || {};
     
-    // 見つけた過去データを新しい安定キーに保存し直す
     SafeStorage.set(PRESETS_KEY, userPresets);
     let ratioHistory = SafeStorage.get(RATIO_KEY) || [];
-
 
     // ===== アコーディオン開閉 =====
     document.querySelectorAll('.section-header').forEach(header => {
@@ -854,13 +853,33 @@
         renderArtwork(viewCanvas, ctx, 0);
     }
 
+    // ★ 透過時はエクスポート形式を制御
+    function checkAndToggleFormat() {
+        const isTransparent = bgModeSelect.value === 'none' || chkHideImage.checked || (palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked);
+        if (isTransparent) {
+            exportFormatSelect.value = 'png';
+            exportFormatSelect.disabled = true; // 透過時はJPEG不可
+        } else {
+            exportFormatSelect.disabled = false;
+        }
+        updateSimulatorInfo();
+    }
+
     bgModeSelect.addEventListener('change', () => {
         const m = bgModeSelect.value;
         densitySizeRow.style.display = m === 'pixel' ? 'flex' : 'none';
         bgDropperRow.style.display = m === 'dropper' ? 'flex' : 'none';
         bgGradientAngleRow.style.display = (m === 'gradient' || m === 'pixel') ? 'flex' : 'none';
-        if (m === 'none') { exportFormatSelect.value = 'png'; }
-        requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
+        checkAndToggleFormat();
+        requestBackgroundUpdate(); drawWorkspace();
+    });
+    chkHideImage.addEventListener('change', () => {
+        checkAndToggleFormat();
+        drawWorkspace();
+    });
+    chkSimpleMode.addEventListener('change', () => {
+        checkAndToggleFormat();
+        drawWorkspace();
     });
 
     if (window.EyeDropper) {
@@ -898,7 +917,7 @@
     [palettePosition, paletteThickness, paletteGapRange, colorSpacingRange, whiteBorderRange,
      paletteSlotBorderColor, paletteSlotBorderWidth,
      chkDrawPalette, chkShowExtractionMarkers, imageScaleRange, imageOffsetXRange, imageOffsetYRange,
-     chkHideImage, textAlignSelect, exportResolutionSelect,
+     textAlignSelect, exportResolutionSelect,
      sizeCustom1, sizeCustom2, sizeCustom3, exifFontSizeRange, customLetterSpacingRange, exifLetterSpacingRange,
      textOpacityRange, textColorTypeSelect, textManualColorInput, textLineSpacingRange,
      textStrokeWidthRange, textShadowOpacityRange, textShadowBlurRange,
@@ -1054,11 +1073,20 @@
         return name;
     }
 
+    // D&D用 規定動作の無効化
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        window.addEventListener(eventName, preventDefaults, false);
+    });
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
     async function processSelectedFile(file) {
         if (!file) return;
         loadingOverlay.style.display = 'flex'; loadingText.textContent = "Loading...";
-        const nameWithoutExt = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
-        fileNameInput.value = nameWithoutExt + "-palette";
+        const nameWithoutExt = file.name ? file.name.substring(0, file.name.lastIndexOf('.')) : "image";
+        fileNameInput.value = (nameWithoutExt || "image") + "-palette";
 
         try {
             if (typeof exifr !== 'undefined') {
@@ -1123,7 +1151,9 @@
         } catch(err) { console.error("EXIF Parse Error:", err); }
 
         let processFile = file;
-        if (file.name.toLowerCase().match(/\.(heic|heif)$/i)) {
+        const isHeic = (file.name && file.name.toLowerCase().match(/\.(heic|heif)$/i)) || file.type === 'image/heic' || file.type === 'image/heif';
+        
+        if (isHeic) {
             try {
                 if (typeof heic2any === 'undefined') throw new Error("heic2any library is missing");
                 const convertedBlob = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
@@ -1136,40 +1166,45 @@
             }
         }
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            const tempImg = new Image();
-            tempImg.onload = () => {
-                rawOriginalImage = tempImg;
-                const maxPreviewDim = 1800; let w = tempImg.width, h = tempImg.height;
-                if (w > maxPreviewDim || h > maxPreviewDim) {
-                    if (w > h) { h = Math.round(h * (maxPreviewDim / w)); w = maxPreviewDim; } 
-                    else { w = Math.round(w * (maxPreviewDim / h)); h = maxPreviewDim; }
-                }
-                imageScaleRatioX = tempImg.width / w;
-                imageScaleRatioY = tempImg.height / h;
+        const objectUrl = URL.createObjectURL(processFile);
+        const tempImg = new Image();
+        
+        tempImg.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            rawOriginalImage = tempImg;
+            const maxPreviewDim = 1800; let w = tempImg.width, h = tempImg.height;
+            if (w > maxPreviewDim || h > maxPreviewDim) {
+                if (w > h) { h = Math.round(h * (maxPreviewDim / w)); w = maxPreviewDim; } 
+                else { w = Math.round(w * (maxPreviewDim / h)); h = maxPreviewDim; }
+            }
+            imageScaleRatioX = tempImg.width / w;
+            imageScaleRatioY = tempImg.height / h;
 
-                const optimizeCanvas = document.createElement('canvas'); 
-                optimizeCanvas.width = w; optimizeCanvas.height = h;
-                optimizeCanvas.getContext('2d').drawImage(tempImg, 0, 0, w, h);
-                
-                    cropperImage.onload = () => {
-                        cropperArea.style.display = 'flex'; previewArea.style.display = 'none'; 
-                        cropperControls.style.display = 'block'; paletteControls.style.display = 'none';
-                        document.getElementById('cropperControls').querySelector('.section-header').classList.remove('collapsed');
-                        document.getElementById('cropperControls').querySelector('.section-content').classList.remove('collapsed');
-                        if (cropper) cropper.destroy(); 
-                        cropper = new Cropper(cropperImage, { aspectRatio: userTargetRatio, viewMode: 1, autoCropArea: 1.0, background: false, zoomOnWheel: true, zoomOnTouch: true, movable: true, rotatable: false }); 
-                        loadingOverlay.style.display = 'none'; 
-                        imageInput.value = "";
-                    };
-                cropperImage.src = optimizeCanvas.toDataURL('image/jpeg', 0.9);
+            const optimizeCanvas = document.createElement('canvas'); 
+            optimizeCanvas.width = w; optimizeCanvas.height = h;
+            optimizeCanvas.getContext('2d').drawImage(tempImg, 0, 0, w, h);
+            
+            cropperImage.onload = () => {
+                cropperArea.style.display = 'flex'; previewArea.style.display = 'none'; 
+                cropperControls.style.display = 'block'; paletteControls.style.display = 'none';
+                document.getElementById('cropperControls').querySelector('.section-header').classList.remove('collapsed');
+                document.getElementById('cropperControls').querySelector('.section-content').classList.remove('collapsed');
+                if (cropper) cropper.destroy(); 
+                cropper = new Cropper(cropperImage, { aspectRatio: userTargetRatio, viewMode: 1, autoCropArea: 1.0, background: false, zoomOnWheel: true, zoomOnTouch: true, movable: true, rotatable: false }); 
+                loadingOverlay.style.display = 'none'; 
+                imageInput.value = "";
             };
-            tempImg.onerror = () => { alert("画像の展開に失敗しました。"); loadingOverlay.style.display = 'none'; imageInput.value = ""; };
-            tempImg.src = event.target.result;
+            cropperImage.src = optimizeCanvas.toDataURL('image/jpeg', 0.9);
         };
-        reader.onerror = () => { alert("ファイルの読み込みに失敗しました。"); loadingOverlay.style.display = 'none'; imageInput.value = ""; };
-        reader.readAsDataURL(processFile);
+        
+        tempImg.onerror = () => { 
+            URL.revokeObjectURL(objectUrl);
+            alert("画像の展開に失敗しました。"); 
+            loadingOverlay.style.display = 'none'; 
+            imageInput.value = ""; 
+        };
+        
+        tempImg.src = objectUrl;
     }
 
     imageInput.addEventListener('change', (e) => {
@@ -1177,17 +1212,14 @@
     });
 
     dropZone.addEventListener('dragover', (e) => {
-        e.preventDefault(); e.stopPropagation();
         dropZone.classList.add('dragover');
     });
 
     dropZone.addEventListener('dragleave', (e) => {
-        e.preventDefault(); e.stopPropagation();
         dropZone.classList.remove('dragover');
     });
 
     dropZone.addEventListener('drop', (e) => {
-        e.preventDefault(); e.stopPropagation();
         dropZone.classList.remove('dragover');
         if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
             processSelectedFile(e.dataTransfer.files[0]);
@@ -1831,7 +1863,7 @@
             coords: { exifGroup: {x: textLayers.exifGroup.x, y: textLayers.exifGroup.y}, locationGroup: {x: textLayers.locationGroup.x, y: textLayers.locationGroup.y} },
             locationGroup: { show: chkLocationGroup.checked, l1chk: chkLocation1.checked, l2chk: chkLocation2.checked, l1: locationTextInput1.value, l2: locationTextInput2.value }
         };
-        SafeStorage.set('studio_palette_presets_v26', userPresets);
+        SafeStorage.set('studio_palette_presets_stable', userPresets);
         newPresetName.value = ""; loadPresetList(); presetSelect.value = name;
         alert(`プリセット「${name}」を保存しました。`);
     });
@@ -1839,7 +1871,7 @@
     deletePresetBtn.addEventListener('click', () => {
         const name = presetSelect.value; if (name === 'default') return;
         if (confirm(`プリセット「${name}」を消去しますか？`)) {
-            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v26', userPresets); loadPresetList(); drawWorkspace();
+            delete userPresets[name]; SafeStorage.set('studio_palette_presets_stable', userPresets); loadPresetList(); drawWorkspace();
         }
     });
 
@@ -1998,7 +2030,7 @@
         }
         activeMarkerDragIndex = -1;
         activeDragKey = null;
-        viewCanvas.style.cursor = 'move';
+        viewCanvas.style.cursor = 'grab';
     }
 
     function getCanvasPinchDist(e) {
@@ -2174,7 +2206,6 @@
     downloadBtn.addEventListener('click', () => {
         if (!activeImage) return; 
         
-        // ★修正: 完全透過の条件に当てはまる場合はPNGに強制する
         const isTransparent = bgModeSelect.value === 'none' || chkHideImage.checked || (palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked);
         const format = isTransparent ? 'png' : exportFormatSelect.value;
         let targetRes = parseInt(exportResolutionSelect.value);
@@ -2200,7 +2231,6 @@
     iosShareBtn.addEventListener('click', () => {
         if (!activeImage) return;
         
-        // ★修正: 完全透過の条件に当てはまる場合はPNGに強制する
         const isTransparent = bgModeSelect.value === 'none' || chkHideImage.checked || (palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked);
         const format = isTransparent ? 'png' : exportFormatSelect.value;
         let targetRes = parseInt(exportResolutionSelect.value);
