@@ -575,6 +575,28 @@
     </div>
 
 <script>
+    // ===== 共通の保存キー (今後のアップデートでもデータが消えないように固定) =====
+    const PRESETS_KEY = 'studio_palette_presets_stable';
+    const RATIO_KEY = 'studio_ratio_history';
+
+    // ===== 過去バージョンからのデータ移行（マイグレーション） =====
+    let userPresets = SafeStorage.get(PRESETS_KEY) ||
+                      SafeStorage.get('studio_palette_presets_v25') || 
+                      SafeStorage.get('studio_palette_presets_v24') ||
+                      SafeStorage.get('studio_palette_presets_v23') ||
+                      SafeStorage.get('studio_palette_presets_v22') ||
+                      SafeStorage.get('studio_palette_presets_v21') ||
+                      SafeStorage.get('studio_palette_presets_v20') ||
+                      SafeStorage.get('studio_palette_presets_v19') ||
+                      SafeStorage.get('studio_palette_presets_v18') ||
+                      SafeStorage.get('studio_palette_presets_v17') ||
+                      SafeStorage.get('studio_palette_presets_v16') || {};
+    
+    // 見つけた過去データを新しい安定キーに保存し直す
+    SafeStorage.set(PRESETS_KEY, userPresets);
+    let ratioHistory = SafeStorage.get(RATIO_KEY) || [];
+
+
     // ===== アコーディオン開閉 =====
     document.querySelectorAll('.section-header').forEach(header => {
         header.addEventListener('click', () => {
@@ -585,12 +607,6 @@
             }
         });
     });
-
-    // ===== SafeStorage =====
-    const SafeStorage = {
-        get(key) { try { return JSON.parse(localStorage.getItem(key)); } catch(e) { return null; } },
-        set(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) { } },
-    };
 
     // ===== UI Theme & Accent Color =====
     const uiThemeSelect = document.getElementById('uiThemeSelect');
@@ -798,8 +814,6 @@
     let cachedBgCanvas = null;
     let bgNeedsUpdate = true;
 
-    let userPresets = SafeStorage.get('studio_palette_presets_v25') || {};
-    let ratioHistory = SafeStorage.get('studio_ratio_history') || [];
     let textLayers = { 
         custom1: { x: 0.5, y: 0.81, isVert: false }, 
         custom2: { x: 0.5, y: 0.83, isVert: false }, 
@@ -972,7 +986,7 @@
         const ratioStr = `${w}:${h}`;
         if (!ratioHistory.includes(ratioStr)) {
             ratioHistory.unshift(ratioStr); if(ratioHistory.length > 10) ratioHistory.pop();
-            SafeStorage.set('studio_ratio_history', ratioHistory); renderRatioHistory();
+            SafeStorage.set(RATIO_KEY, ratioHistory); renderRatioHistory();
         }
     });
     setFreeAspectBtn.addEventListener('click', () => { if(cropper) cropper.setAspectRatio(NaN); });
@@ -1004,7 +1018,7 @@
             });
             chip.querySelector('.history-del').addEventListener('click', (e) => {
                 e.stopPropagation(); ratioHistory = ratioHistory.filter(r => r !== ratioStr);
-                SafeStorage.set('studio_ratio_history', ratioHistory); renderRatioHistory();
+                SafeStorage.set(RATIO_KEY, ratioHistory); renderRatioHistory();
             });
             ratioHistoryArea.appendChild(chip);
         });
@@ -1353,7 +1367,6 @@
         if (parseInt(whiteBorderRange.value) > 0) bitPerPixel *= 0.95;
         if (bgModeSelect.value !== 'gradient') bitPerPixel *= 0.82;
         
-        // ★修正: 透過設定の場合は強制的にPNG出力されるため、容量計算もPNG基準に補正
         const isTransparent = bgModeSelect.value === 'none' || chkHideImage.checked || (palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked);
         const format = isTransparent ? 'png' : exportFormatSelect.value;
         
@@ -1408,7 +1421,7 @@
 
     function drawBackground(targetCtx, w, h, srcImage) {
         const mode = bgModeSelect.value;
-        if (mode === 'none') return; // 背景透過
+        if (mode === 'none') return;
         if (mode === 'white') { targetCtx.fillStyle = '#ffffff'; targetCtx.fillRect(0, 0, w, h); return; }
         if (mode === 'black') { targetCtx.fillStyle = '#000000'; targetCtx.fillRect(0, 0, w, h); return; }
         if (mode === 'dropper') { targetCtx.fillStyle = bgManualColorInput.value; targetCtx.fillRect(0, 0, w, h); return; }
@@ -1818,7 +1831,7 @@
             coords: { exifGroup: {x: textLayers.exifGroup.x, y: textLayers.exifGroup.y}, locationGroup: {x: textLayers.locationGroup.x, y: textLayers.locationGroup.y} },
             locationGroup: { show: chkLocationGroup.checked, l1chk: chkLocation1.checked, l2chk: chkLocation2.checked, l1: locationTextInput1.value, l2: locationTextInput2.value }
         };
-        SafeStorage.set('studio_palette_presets_v25', userPresets);
+        SafeStorage.set('studio_palette_presets_v26', userPresets);
         newPresetName.value = ""; loadPresetList(); presetSelect.value = name;
         alert(`プリセット「${name}」を保存しました。`);
     });
@@ -1826,7 +1839,7 @@
     deletePresetBtn.addEventListener('click', () => {
         const name = presetSelect.value; if (name === 'default') return;
         if (confirm(`プリセット「${name}」を消去しますか？`)) {
-            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v25', userPresets); loadPresetList(); drawWorkspace();
+            delete userPresets[name]; SafeStorage.set('studio_palette_presets_v26', userPresets); loadPresetList(); drawWorkspace();
         }
     });
 
@@ -1985,7 +1998,7 @@
         }
         activeMarkerDragIndex = -1;
         activeDragKey = null;
-        viewCanvas.style.cursor = 'grab';
+        viewCanvas.style.cursor = 'move';
     }
 
     function getCanvasPinchDist(e) {
@@ -2161,6 +2174,7 @@
     downloadBtn.addEventListener('click', () => {
         if (!activeImage) return; 
         
+        // ★修正: 完全透過の条件に当てはまる場合はPNGに強制する
         const isTransparent = bgModeSelect.value === 'none' || chkHideImage.checked || (palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked);
         const format = isTransparent ? 'png' : exportFormatSelect.value;
         let targetRes = parseInt(exportResolutionSelect.value);
@@ -2186,6 +2200,7 @@
     iosShareBtn.addEventListener('click', () => {
         if (!activeImage) return;
         
+        // ★修正: 完全透過の条件に当てはまる場合はPNGに強制する
         const isTransparent = bgModeSelect.value === 'none' || chkHideImage.checked || (palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked);
         const format = isTransparent ? 'png' : exportFormatSelect.value;
         let targetRes = parseInt(exportResolutionSelect.value);
