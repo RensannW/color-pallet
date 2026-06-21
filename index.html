@@ -19,7 +19,6 @@
             --text-main: #f7fafc;
             --text-label: #e2e8f0;
             --border-color: #4a5568;
-            /* アクセントカラー */
             --accent-main: #38bdf8;
             --accent-sub: #7dd3fc;
         }
@@ -33,7 +32,6 @@
             display: flex; flex-direction: column; gap: 11px; box-shadow: 0 4px 25px rgba(0,0,0,0.5); overflow-y: auto;
             border: 1px solid var(--border-color); transition: background-color 0.3s;
         }
-        /* アコーディオン・ヘッダー */
         .section-header { 
             font-size: 12px; margin: 0 0 4px 0; color: var(--accent-main); 
             text-transform: uppercase; letter-spacing: 0.05em; 
@@ -57,7 +55,6 @@
         .btn-download { background: #10b981; }
         input[type="file"] { display: none; }
         
-        /* ドロップゾーン用スタイル */
         #dropZone.dragover {
             background-color: var(--accent-sub);
             border-color: #ffffff;
@@ -105,7 +102,6 @@
         
         .preview-area { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; position: relative; }
         
-        /* 透過を視覚化するための市松模様 */
         #viewCanvas { 
             max-width: 100%; max-height: 100%; 
             box-shadow: 0 20px 50px rgba(0,0,0,0.7); border-radius: 2px; 
@@ -126,7 +122,6 @@
         .spinner { width: 40px; height: 40px; border: 4px solid var(--accent-main); border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* スマホ向けレイアウト（プレビュー上部固定） */
         @media (max-width: 768px) {
             body { flex-direction: column-reverse; height: 100dvh; overflow: hidden; padding: 0; gap: 0; }
             .main-container { width: 100%; height: 45dvh; min-height: auto; box-sizing: border-box; border-radius: 0; border-width: 0 0 1px 0; flex-shrink: 0; z-index: 10; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
@@ -284,11 +279,17 @@
                         </div>
                     </div>
                     <div class="control-row">
-                        <label>画像の位置 (X / Y):</label>
+                        <label>画像の位置 (X軸):</label>
                         <div style="display:flex; gap:4px; align-items:center;">
-                            <input type="range" id="imageOffsetXRange" min="-1000" max="1000" value="0" style="width:40px;" title="X軸">
-                            <input type="range" id="imageOffsetYRange" min="-1000" max="1000" value="0" style="width:40px;" title="Y軸">
-                            <button class="btn" id="resetImagePosBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568;">R</button>
+                            <input type="range" id="imageOffsetXRange" min="-1000" max="1000" value="0" style="width:110px;" title="X軸">
+                            <button class="btn" id="resetImagePosXBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568;">R</button>
+                        </div>
+                    </div>
+                    <div class="control-row">
+                        <label>画像の位置 (Y軸):</label>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <input type="range" id="imageOffsetYRange" min="-1000" max="1000" value="0" style="width:110px;" title="Y軸">
+                            <button class="btn" id="resetImagePosYBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568;">R</button>
                         </div>
                     </div>
                     <div class="control-row" style="background:var(--bg-input); padding:6px; border-radius:4px; margin-top:4px;">
@@ -333,7 +334,26 @@
                         <input type="range" id="paletteSlotBorderWidth" min="1" max="20" value="2">
                     </div>
 
-                    <div class="control-row"><label>外周の白枠(太さ):</label><input type="range" id="whiteBorderRange" min="0" max="60" value="0"></div>
+                    <div class="control-row">
+                        <label>外周の枠線:</label>
+                        <select id="outerBorderColorSelect" class="select-layout" style="width:140px;">
+                            <option value="none" selected>なし</option>
+                            <option value="white">ホワイト</option>
+                            <option value="black">ブラック</option>
+                            <option value="dropper">スポイト / 任意指定</option>
+                        </select>
+                    </div>
+                    <div class="control-row" id="outerBorderDropperRow" style="display:none;">
+                        <label>任意カラー:</label>
+                        <div style="display:flex; gap:4px; align-items:center;">
+                            <input type="color" id="outerBorderManualColor" value="#ffffff">
+                            <button class="btn" id="outerBorderDropperBtn" style="padding:3px 6px; font-size:10px;">スポイト</button>
+                        </div>
+                    </div>
+                    <div class="control-row" id="outerBorderWidthRow" style="display:none;">
+                        <label>外周枠の太さ:</label>
+                        <input type="range" id="whiteBorderRange" min="0" max="60" value="0">
+                    </div>
 
                     <div id="overlayControls" style="display:none; flex-direction:column; gap:5px; border-top:1px solid var(--border-color); padding-top:6px; margin-top:4px;">
                         <div style="font-size:10px; color:var(--accent-sub); font-weight:bold; margin-bottom:2px;">🖼 重ねるモード設定</div>
@@ -659,7 +679,8 @@
     const resetImageScaleBtn = document.getElementById('resetImageScaleBtn');
     const imageOffsetXRange = document.getElementById('imageOffsetXRange');
     const imageOffsetYRange = document.getElementById('imageOffsetYRange');
-    const resetImagePosBtn = document.getElementById('resetImagePosBtn');
+    const resetImagePosXBtn = document.getElementById('resetImagePosXBtn'); // Xリセットボタン
+    const resetImagePosYBtn = document.getElementById('resetImagePosYBtn'); // Yリセットボタン
     const chkHideImage = document.getElementById('chkHideImage');
 
     const chkShowExtractionMarkers = document.getElementById('chkShowExtractionMarkers');
@@ -674,12 +695,17 @@
     const paletteGapRow = document.getElementById('paletteGapRow');
     const colorSpacingRange = document.getElementById('colorSpacingRange');
     
-    // パレット枠線
     const paletteSlotBorderColor = document.getElementById('paletteSlotBorderColor');
     const paletteSlotBorderWidthRow = document.getElementById('paletteSlotBorderWidthRow');
     const paletteSlotBorderWidth = document.getElementById('paletteSlotBorderWidth');
 
+    const outerBorderColorSelect = document.getElementById('outerBorderColorSelect');
+    const outerBorderDropperRow = document.getElementById('outerBorderDropperRow');
+    const outerBorderManualColor = document.getElementById('outerBorderManualColor');
+    const outerBorderDropperBtn = document.getElementById('outerBorderDropperBtn');
+    const outerBorderWidthRow = document.getElementById('outerBorderWidthRow');
     const whiteBorderRange = document.getElementById('whiteBorderRange');
+
     const overlayControls = document.getElementById('overlayControls');
     const overlayOpacityRange = document.getElementById('overlayOpacityRange');
     const overlayWidthRange = document.getElementById('overlayWidthRange');
@@ -812,6 +838,36 @@
     let canvasScale = 1;
     let lastTouchDist = null;
     let lastDragPos = { x: 0, y: 0 };
+    let lastImgBounds = { x: 0, y: 0, w: 1, h: 1 }; // TDZ対策のため、この位置に宣言
+
+    // ===== 外周枠カラー UI 制御 =====
+    function updateOuterBorderUI() {
+        const v = outerBorderColorSelect.value;
+        outerBorderDropperRow.style.display = v === 'dropper' ? 'flex' : 'none';
+        outerBorderWidthRow.style.display = v !== 'none' ? 'flex' : 'none';
+    }
+    outerBorderColorSelect.addEventListener('change', () => { updateOuterBorderUI(); drawWorkspace(); });
+    outerBorderManualColor.addEventListener('input', () => { drawWorkspace(); });
+
+    if (window.EyeDropper) {
+        outerBorderDropperBtn.addEventListener('click', async () => {
+            try {
+                const r = await new EyeDropper().open();
+                outerBorderManualColor.value = r.sRGBHex;
+                drawWorkspace();
+            } catch(e) {}
+        });
+    } else {
+        outerBorderDropperBtn.style.display = 'none';
+    }
+
+    function getOuterBorderColor() {
+        const v = outerBorderColorSelect.value;
+        if (v === 'white') return '#ffffff';
+        if (v === 'black') return '#000000';
+        if (v === 'dropper') return outerBorderManualColor.value;
+        return null; // none
+    }
 
     function updateOverlayUI() {
         const pos = palettePosition.value;
@@ -903,7 +959,8 @@
     [customTextInput1, customTextInput2, customTextInput3, cameraTextInput, lensTextInput, settingsTextInput, dateTextInput].forEach(el => { el.addEventListener('input', drawWorkspace); });
 
     resetImageScaleBtn.addEventListener('click', () => { imageScaleRange.value = 100; drawWorkspace(); });
-    resetImagePosBtn.addEventListener('click', () => { imageOffsetXRange.value = 0; imageOffsetYRange.value = 0; drawWorkspace(); });
+    resetImagePosXBtn.addEventListener('click', () => { imageOffsetXRange.value = 0; drawWorkspace(); }); // X軸のみリセット
+    resetImagePosYBtn.addEventListener('click', () => { imageOffsetYRange.value = 0; drawWorkspace(); }); // Y軸のみリセット
 
     bgShuffleBtn.addEventListener('click', () => {
         gradientPatternIndex = (gradientPatternIndex + 1) % 5;
@@ -987,7 +1044,9 @@
     });
 
     presetSelect.addEventListener('change', () => {
-        applySelectedPresetLogic();
+        if (presetSelect.value !== 'default') {
+            applySelectedPresetLogic();
+        }
         if (activeImage) { requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo(); }
     });
 
@@ -1139,16 +1198,16 @@
                 optimizeCanvas.width = w; optimizeCanvas.height = h;
                 optimizeCanvas.getContext('2d').drawImage(tempImg, 0, 0, w, h);
                 
-                    cropperImage.onload = () => {
-                        cropperArea.style.display = 'flex'; previewArea.style.display = 'none'; 
-                        cropperControls.style.display = 'block'; paletteControls.style.display = 'none';
-                        document.getElementById('cropperControls').querySelector('.section-header').classList.remove('collapsed');
-                        document.getElementById('cropperControls').querySelector('.section-content').classList.remove('collapsed');
-                        if (cropper) cropper.destroy(); 
-                        cropper = new Cropper(cropperImage, { aspectRatio: userTargetRatio, viewMode: 1, autoCropArea: 1.0, background: false, zoomOnWheel: true, zoomOnTouch: true, movable: true, rotatable: false }); 
-                        loadingOverlay.style.display = 'none'; 
-                        imageInput.value = "";
-                    };
+                cropperImage.onload = () => {
+                    cropperArea.style.display = 'flex'; previewArea.style.display = 'none'; 
+                    cropperControls.style.display = 'block'; paletteControls.style.display = 'none';
+                    document.getElementById('cropperControls').querySelector('.section-header').classList.remove('collapsed');
+                    document.getElementById('cropperControls').querySelector('.section-content').classList.remove('collapsed');
+                    if (cropper) cropper.destroy(); 
+                    cropper = new Cropper(cropperImage, { aspectRatio: userTargetRatio, viewMode: 1, autoCropArea: 1.0, background: false, zoomOnWheel: true, zoomOnTouch: true, movable: true, rotatable: false }); 
+                    loadingOverlay.style.display = 'none'; 
+                    imageInput.value = "";
+                };
                 cropperImage.src = optimizeCanvas.toDataURL('image/jpeg', 0.9);
             };
             tempImg.onerror = () => { alert("画像の展開に失敗しました。"); loadingOverlay.style.display = 'none'; imageInput.value = ""; };
@@ -1200,7 +1259,9 @@
         cropperArea.style.display = 'none'; previewArea.style.display = 'flex';
         cropperControls.style.display = 'none'; paletteControls.style.display = 'block';
 
-        if (chkResetOnRecrop.checked) applySelectedPresetLogic();
+        if (chkResetOnRecrop.checked && presetSelect.value !== 'default') {
+            applySelectedPresetLogic();
+        }
 
         requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
         loadingOverlay.style.display = 'none';
@@ -1353,7 +1414,6 @@
         if (parseInt(whiteBorderRange.value) > 0) bitPerPixel *= 0.95;
         if (bgModeSelect.value !== 'gradient') bitPerPixel *= 0.82;
         
-        // ★修正: 透過設定の場合は強制的にPNG出力されるため、容量計算もPNG基準に補正
         const isTransparent = bgModeSelect.value === 'none' || chkHideImage.checked || (palettePosition.value.startsWith('overlay-') && chkSimpleMode.checked);
         const format = isTransparent ? 'png' : exportFormatSelect.value;
         
@@ -1408,7 +1468,7 @@
 
     function drawBackground(targetCtx, w, h, srcImage) {
         const mode = bgModeSelect.value;
-        if (mode === 'none') return; // 背景透過
+        if (mode === 'none') return;
         if (mode === 'white') { targetCtx.fillStyle = '#ffffff'; targetCtx.fillRect(0, 0, w, h); return; }
         if (mode === 'black') { targetCtx.fillStyle = '#000000'; targetCtx.fillRect(0, 0, w, h); return; }
         if (mode === 'dropper') { targetCtx.fillStyle = bgManualColorInput.value; targetCtx.fillRect(0, 0, w, h); return; }
@@ -1480,6 +1540,8 @@
 
         const slotBorderColor = paletteSlotBorderColor.value; 
         const slotBorderWidthScale = Math.max(1, parseInt(paletteSlotBorderWidth.value) * (minDim / 1200));
+
+        const outerBorderCol = getOuterBorderColor();
 
         let imgX = 0, imgY = 0, imgWidth = width, imgHeight = height;
 
@@ -1645,22 +1707,25 @@
             }
         }
 
-        if (chkShowExtractionMarkers.checked && !isHighRes && !isSimpleMode) {
+        if (chkShowExtractionMarkers.checked && !isSimpleMode) {
             const pts = cachedPointsBlocks[palettePatternIndex];
-            const markerR = parseInt(markerSizeRange.value);
+            const resScale = isHighRes ? (maxDim / 2400) : 1;
+            const markerR = Math.round(parseInt(markerSizeRange.value) * resScale);
             const showNum = chkMarkerNumber.checked;
             if (pts) {
                 for (let i = 0; i < totalColors; i++) {
                     if (!pts[i]) continue;
                     const mx = imgX + pts[i].x * imgWidth;
                     const my = imgY + pts[i].y * imgHeight;
-                    const isDragging = (activeMarkerDragIndex === i);
+                    const isDragging = isHighRes ? false : (activeMarkerDragIndex === i);
 
                     if (isDragging) { targetCtx.beginPath(); targetCtx.arc(mx, my, markerR + 5, 0, Math.PI * 2); targetCtx.fillStyle = 'rgba(255,255,255,0.25)'; targetCtx.fill(); }
-                    targetCtx.beginPath(); targetCtx.arc(mx, my, markerR + 2.5, 0, Math.PI * 2); targetCtx.fillStyle = isDragging ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.35)'; targetCtx.fill();
+                    targetCtx.beginPath(); targetCtx.arc(mx, my, markerR + 2.5, 0, Math.PI * 2); targetCtx.fillStyle = 'rgba(0,0,0,0.35)'; targetCtx.fill();
                     targetCtx.beginPath(); targetCtx.arc(mx, my, markerR, 0, Math.PI * 2); targetCtx.fillStyle = selectedColors[i]; targetCtx.fill();
 
-                    targetCtx.lineWidth = isDragging ? 3.5 : 2.5; targetCtx.strokeStyle = isDragging ? '#ffffff' : 'rgba(255,255,255,0.92)'; targetCtx.stroke();
+                    targetCtx.lineWidth = 2.5 * (isHighRes ? resScale : 1);
+                    targetCtx.strokeStyle = 'rgba(255,255,255,0.92)';
+                    targetCtx.stroke();
 
                     if (markerR >= 7 && showNum) {
                         const labelR = parseInt(selectedColors[i].substring(1,3),16); const labelG = parseInt(selectedColors[i].substring(3,5),16); const labelB = parseInt(selectedColors[i].substring(5,7),16);
@@ -1673,10 +1738,12 @@
             }
         }
 
-        if (!isSimpleMode && whiteBorderThickness > 0) {
-            targetCtx.fillStyle = "#ffffff";
-            targetCtx.fillRect(0,0,width,whiteBorderThickness); targetCtx.fillRect(0,height-whiteBorderThickness,width,whiteBorderThickness);
-            targetCtx.fillRect(0,0,whiteBorderThickness,height); targetCtx.fillRect(width-whiteBorderThickness,0,whiteBorderThickness,height);
+        if (!isSimpleMode && whiteBorderThickness > 0 && outerBorderCol) {
+            targetCtx.fillStyle = outerBorderCol;
+            targetCtx.fillRect(0,0,width,whiteBorderThickness);
+            targetCtx.fillRect(0,height-whiteBorderThickness,width,whiteBorderThickness);
+            targetCtx.fillRect(0,0,whiteBorderThickness,height);
+            targetCtx.fillRect(width-whiteBorderThickness,0,whiteBorderThickness,height);
         }
 
         if (!isSimpleMode) {
@@ -1809,6 +1876,7 @@
             bgAngle: bgGradientAngleRange.value, imgScale: imageScaleRange.value, imgOffsetX: imageOffsetXRange.value, imgOffsetY: imageOffsetYRange.value, hideImg: chkHideImage.checked,
             showMarker: chkShowExtractionMarkers.checked, markerSize: markerSizeRange.value, markerNum: chkMarkerNumber.checked,
             sBorderC: paletteSlotBorderColor.value, sBorderW: paletteSlotBorderWidth.value,
+            outerBorderColor: outerBorderColorSelect.value, outerBorderManualColor: outerBorderManualColor.value,
             customTexts: [
                 { text: customTextInput1.value, chk: chkCustomText1.checked, vert: chkVert1.checked, x: textLayers.custom1.x, y: textLayers.custom1.y, size: sizeCustom1.value },
                 { text: customTextInput2.value, chk: chkCustomText2.checked, vert: chkVert2.checked, x: textLayers.custom2.x, y: textLayers.custom2.y, size: sizeCustom2.value },
@@ -1840,6 +1908,12 @@
         paletteSlotBorderColor.value = d.sBorderC || 'none';
         paletteSlotBorderWidthRow.style.display = paletteSlotBorderColor.value !== 'none' ? 'flex' : 'none';
         paletteSlotBorderWidth.value = d.sBorderW || 2;
+
+        if (d.outerBorderColor !== undefined) {
+            outerBorderColorSelect.value = d.outerBorderColor;
+            outerBorderManualColor.value = d.outerBorderManualColor || '#ffffff';
+            updateOuterBorderUI();
+        }
         
         if (d.overlayOpacity !== undefined) overlayOpacityRange.value = d.overlayOpacity;
         if (d.overlayWidth !== undefined) overlayWidthRange.value = d.overlayWidth;
@@ -1872,7 +1946,7 @@
         exifFontSizeRange.value = d.eFontSize || 20; textOpacityRange.value = d.opacity || 85;
         textColorTypeSelect.value = d.cType || "white"; textManualColorInput.value = d.mColor || "#ffffff"; textCustomColorRow.style.display = (textColorTypeSelect.value === 'dropper') ? 'flex' : 'none';
         customLetterSpacingRange.value = d.cLetterSpacing || 1; exifLetterSpacingRange.value = d.eLetterSpacing || 1;
-        textLineSpacingRange.value = d.lineSpacing;
+        textLineSpacingRange.value = d.lineSpacing != null ? d.lineSpacing : 25;
         if (d.chk) { chkExifGroup.checked = d.chk.exifGroup ?? true; chkCamera.checked = d.chk.camera ?? true; chkLens.checked = d.chk.lens ?? true; chkSettings.checked = d.chk.settings ?? true; chkDate.checked = d.chk.date ?? true; }
         if (d.customTexts) {
             customTextInput1.value = d.customTexts[0].text; chkCustomText1.checked = d.customTexts[0].chk; chkVert1.checked = d.customTexts[0].vert; textLayers.custom1.x = d.customTexts[0].x; textLayers.custom1.y = d.customTexts[0].y; sizeCustom1.value = d.customTexts[0].size || 28;
@@ -1888,8 +1962,6 @@
         requestBackgroundUpdate();
         updateOverlayUI();
     }
-
-    let lastImgBounds = { x: 0, y: 0, w: 1, h: 1 }; 
 
     const getCanvasMousePos = (e) => {
         const r = viewCanvas.getBoundingClientRect();
@@ -2142,15 +2214,10 @@
             const file = new File([blob], filename, { type: mimeType });
             if (navigator.canShare({ files: [file] })) {
                 try {
-                    await navigator.share({
-                        files: [file],
-                        title: suggestedName
-                    });
+                    await navigator.share({ files: [file], title: suggestedName });
                     return;
                 } catch (err) {
-                    if (err.name !== 'AbortError') {
-                        console.error('Share failed', err);
-                    }
+                    if (err.name !== 'AbortError') { console.error('Share failed', err); }
                     return;
                 }
             }
@@ -2206,6 +2273,7 @@
     loadPresetList();
     renderRatioHistory();
     updateOverlayUI();
+    updateOuterBorderUI();
 </script>
 </body>
 </html>
