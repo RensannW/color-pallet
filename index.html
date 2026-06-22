@@ -237,6 +237,7 @@
                         <select id="paletteSortSelect" class="select-layout" style="width:140px;">
                             <option value="hue" selected>色相順 (グラデーション)</option>
                             <option value="lightness">明度順 (明るさ)</option>
+                            <option value="darkness">明度順 (暗さ)</option>
                             <option value="saturation">彩度順 (鮮やかさ)</option>
                             <option value="frequency">面積・役割順 (6:3:1)</option>
                             <option value="custom">— 手動 / 抽出順 —</option>
@@ -682,7 +683,7 @@
     const ratioHistoryArea = document.getElementById('ratioHistoryArea');
     const sortableContainer = document.getElementById('sortableContainer');
     const colorCountSelect = document.getElementById('colorCountSelect');
-    const paletteSortSelect = document.getElementById('paletteSortSelect'); // ★追加
+    const paletteSortSelect = document.getElementById('paletteSortSelect'); 
     const loadingOverlay = document.getElementById('loadingOverlay');
     const loadingText = document.getElementById('loadingText');
 
@@ -851,7 +852,7 @@
     let lastDragPos = { x: 0, y: 0 };
     let lastImgBounds = { x: 0, y: 0, w: 1, h: 1 };
 
-    // ★追加: 色の変換とソートロジック
+    // ===== 色の変換とソートロジック =====
     function hexToHSL(hex) {
         let r = parseInt(hex.substring(1,3), 16) / 255;
         let g = parseInt(hex.substring(3,5), 16) / 255;
@@ -905,11 +906,12 @@
             color: color, point: cachedPointsBlocks[palettePatternIndex][idx]
         }));
 
-        if (sortType === 'hue' || sortType === 'saturation' || sortType === 'lightness') {
+        if (sortType === 'hue' || sortType === 'saturation' || sortType === 'lightness' || sortType === 'darkness') {
             items.forEach(item => { item.hsl = hexToHSL(item.color); });
             if (sortType === 'hue') items.sort((a, b) => a.hsl.h - b.hsl.h);
             if (sortType === 'saturation') items.sort((a, b) => b.hsl.s - a.hsl.s);
-            if (sortType === 'lightness') items.sort((a, b) => b.hsl.l - a.hsl.l);
+            if (sortType === 'lightness') items.sort((a, b) => b.hsl.l - a.hsl.l); // 明るい順
+            if (sortType === 'darkness') items.sort((a, b) => a.hsl.l - b.hsl.l); // 暗い順 (追加)
         } else if (sortType === 'frequency') {
             let counts = getColorsFrequency(selectedColors, samplePixelData);
             items.forEach((item, idx) => { item.freq = counts[idx]; });
@@ -1087,7 +1089,7 @@
         if (croppedCanvas) {
             generateFivePalettePatterns(croppedCanvas, parseInt(colorCountSelect.value));
             selectedColors = [...cachedDataBlocks[palettePatternIndex]];
-            applyPaletteSort(); // ★追加
+            applyPaletteSort();
             renderControlSlots(); requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
         }
     });
@@ -1096,7 +1098,7 @@
         if(cachedDataBlocks.length < 5) return;
         palettePatternIndex = (palettePatternIndex + 1) % 5;
         selectedColors = [...cachedDataBlocks[palettePatternIndex]];
-        applyPaletteSort(); // ★追加
+        applyPaletteSort(); 
         renderControlSlots(); requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
     });
 
@@ -1344,7 +1346,7 @@
         if (chkResetOnRecrop.checked || selectedColors.length === 0) {
             generateFivePalettePatterns(canvas, parseInt(colorCountSelect.value));
             palettePatternIndex = 0; selectedColors = [...cachedDataBlocks[0]]; 
-            applyPaletteSort(); // ★抽出時に自動ソートを適用
+            applyPaletteSort(); 
             renderControlSlots();
         }
 
@@ -1388,7 +1390,6 @@
         }
         if(allPoints.length === 0) allPoints.push({x: 0.5, y: 0.5, r: 128, g: 128, b: 128});
 
-        // ★ベースカラー（最も面積が多い色）を特定してパターン0の基点にする
         let freqMap = {};
         allPoints.forEach(pt => {
             let key = `${Math.round(pt.r/16)},${Math.round(pt.g/16)},${Math.round(pt.b/16)}`;
@@ -1401,7 +1402,7 @@
         for (let p = 0; p < 5; p++) {
             let pts = [...allPoints].sort(() => Math.random() - 0.5);
             let selected = []; 
-            if (p === 0) selected.push(basePt); // 最も高頻度な色を起点にする
+            if (p === 0) selected.push(basePt); 
             else selected.push(pts[0]);
 
             for(let i=1; i<count; i++) {
@@ -1471,7 +1472,7 @@
                 if (pts && pts.length > Math.max(srcIdx, targetIdx)) { const movedPt = pts.splice(srcIdx, 1)[0]; pts.splice(targetIdx, 0, movedPt); }
                 if (cols && cols.length > Math.max(srcIdx, targetIdx)) { const movedCol = cols.splice(srcIdx, 1)[0]; cols.splice(targetIdx, 0, movedCol); }
                 
-                paletteSortSelect.value = 'custom'; // 手動で変更した場合は設定を手動に
+                paletteSortSelect.value = 'custom'; 
                 
                 renderControlSlots(); requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
             });
@@ -1504,7 +1505,7 @@
                     if (pts && pts.length > Math.max(srcIdx, targetIdx)) { const movedPt = pts.splice(srcIdx, 1)[0]; pts.splice(targetIdx, 0, movedPt); }
                     if (cols && cols.length > Math.max(srcIdx, targetIdx)) { const movedCol = cols.splice(srcIdx, 1)[0]; cols.splice(targetIdx, 0, movedCol); }
                     
-                    paletteSortSelect.value = 'custom'; // 手動で変更した場合は設定を手動に
+                    paletteSortSelect.value = 'custom'; 
                     
                     renderControlSlots(); requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
                 }
@@ -1987,7 +1988,7 @@
             showMarker: chkShowExtractionMarkers.checked, markerSize: markerSizeRange.value, markerNum: chkMarkerNumber.checked,
             sBorderC: paletteSlotBorderColor.value, sBorderW: paletteSlotBorderWidth.value,
             outerBorderColor: outerBorderColorSelect.value, outerBorderManualColor: outerBorderManualColor.value,
-            paletteSort: paletteSortSelect.value, // ★追加
+            paletteSort: paletteSortSelect.value, 
             customTexts: [
                 { text: customTextInput1.value, chk: chkCustomText1.checked, vert: chkVert1.checked, x: textLayers.custom1.x, y: textLayers.custom1.y, size: sizeCustom1.value },
                 { text: customTextInput2.value, chk: chkCustomText2.checked, vert: chkVert2.checked, x: textLayers.custom2.x, y: textLayers.custom2.y, size: sizeCustom2.value },
@@ -2016,7 +2017,7 @@
         if (d.accentColor) { accentColorSelect.value = d.accentColor; applyAccentColor(); }
         palettePosition.value = d.pos; paletteThickness.value = d.thick; paletteGapRange.value = d.gap; colorSpacingRange.value = d.space; whiteBorderRange.value = d.border; showHexSelect.value = d.showHex || "none";
         
-        if (d.paletteSort) paletteSortSelect.value = d.paletteSort; // ★追加
+        if (d.paletteSort) paletteSortSelect.value = d.paletteSort; 
         
         paletteSlotBorderColor.value = d.sBorderC || 'none';
         paletteSlotBorderWidthRow.style.display = paletteSlotBorderColor.value !== 'none' ? 'flex' : 'none';
