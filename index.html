@@ -304,10 +304,9 @@
                             <button class="btn" id="resetImagePosYBtn" style="padding: 3px 6px; font-size: 10px; background:#4a5568;">R</button>
                         </div>
                     </div>
-                    <div class="control-row" style="background:var(--bg-input); padding:6px; border-radius:4px; margin-top:4px;">
-                        <label style="color:var(--accent-main); font-weight:bold;">👻 画像部分を透過くり抜き (非表示):</label>
-                        <input type="checkbox" id="chkHideImage">
-                    </div>
+                    <div class="control-row"><label>画像の影の濃さ:</label><input type="range" id="imageShadowOpacityRange" min="0" max="100" value="45"></div>
+                    <div class="control-row"><label>画像の影のぼかし:</label><input type="range" id="imageShadowBlurRange" min="0" max="100" value="80"></div>
+                    <div class="control-row"><label>画像の影の縦ずれ:</label><input type="range" id="imageShadowOffsetYRange" min="-50" max="50" value="25"></div>
                     
                     <hr style="border:0; border-top:1px solid var(--border-color); margin:8px 0;">
 
@@ -579,6 +578,10 @@
             <h2 class="section-header">10. エクスポート<span class="toggle-icon">▼</span></h2>
             <div class="section-content">
                 <div class="status-box">
+                    <div class="control-row" style="margin-bottom:8px; padding-bottom:8px; border-bottom:1px dashed var(--border-color);">
+                        <label style="color:#f472b6; font-weight:bold;">👻 画像を透過くり抜き:</label>
+                        <input type="checkbox" id="chkHideImage">
+                    </div>
                     <div class="control-row">
                         <label style="color:var(--accent-sub); font-weight:bold;">書き出し形式:</label>
                         <select id="exportFormatSelect" class="select-layout" style="width:110px;">
@@ -695,6 +698,10 @@
     const resetImagePosXBtn = document.getElementById('resetImagePosXBtn');
     const resetImagePosYBtn = document.getElementById('resetImagePosYBtn');
     const chkHideImage = document.getElementById('chkHideImage');
+    
+    const imageShadowOpacityRange = document.getElementById('imageShadowOpacityRange');
+    const imageShadowBlurRange = document.getElementById('imageShadowBlurRange');
+    const imageShadowOffsetYRange = document.getElementById('imageShadowOffsetYRange');
 
     const chkShowExtractionMarkers = document.getElementById('chkShowExtractionMarkers');
     const markerSizeRow = document.getElementById('markerSizeRow');
@@ -1036,6 +1043,7 @@
      textOpacityRange, textColorTypeSelect, textManualColorInput, textLineSpacingRange,
      textStrokeWidthRange, textShadowOpacityRange, textShadowBlurRange,
      hexFontSizeRange, hexLetterSpacingRange,
+     imageShadowOpacityRange, imageShadowBlurRange, imageShadowOffsetYRange,
      chkCustomText1, chkCustomText2, chkCustomText3, chkVert1, chkVert2, chkVert3,
      chkExifGroup, chkCamera, chkLens, chkSettings, chkDate].forEach(el => {
         el.addEventListener('input', () => { drawWorkspace(); updateSimulatorInfo(); });
@@ -1727,10 +1735,12 @@
                 targetCtx.fillRect(imgX, imgY, imgWidth, imgHeight);
                 targetCtx.restore();
             } else {
-                targetCtx.shadowColor = "rgba(0,0,0,0.45)";
-                const sb = 80; const sy = 25;
-                targetCtx.shadowBlur = isHighRes ? sb : Math.round(sb / 3);
-                targetCtx.shadowOffsetY = isHighRes ? sy : Math.round(sy / 3);
+                const imgShadowOp = parseFloat(imageShadowOpacityRange.value) / 100;
+                const resScale = maxDim / 2400; 
+                targetCtx.shadowColor = `rgba(0,0,0,${imgShadowOp})`;
+                targetCtx.shadowBlur = parseInt(imageShadowBlurRange.value) * resScale;
+                targetCtx.shadowOffsetY = parseInt(imageShadowOffsetYRange.value) * resScale;
+
                 if (isHighRes && rawOriginalImage && hqCropData) {
                     const sx = hqCropData.x * imageScaleRatioX, sy2 = hqCropData.y * imageScaleRatioY;
                     const sw = hqCropData.width * imageScaleRatioX, sh = hqCropData.height * imageScaleRatioY;
@@ -1800,6 +1810,12 @@
                 targetCtx.fillRect(imgX, imgY, imgWidth, imgHeight);
                 targetCtx.restore();
             } else if (!isHideImageCheck) {
+                const imgShadowOp = parseFloat(imageShadowOpacityRange.value) / 100;
+                const resScale = maxDim / 2400; 
+                targetCtx.shadowColor = `rgba(0,0,0,${imgShadowOp})`;
+                targetCtx.shadowBlur = parseInt(imageShadowBlurRange.value) * resScale;
+                targetCtx.shadowOffsetY = parseInt(imageShadowOffsetYRange.value) * resScale;
+
                 if (isHighRes && rawOriginalImage && hqCropData) {
                     const sx = hqCropData.x * imageScaleRatioX, sy2 = hqCropData.y * imageScaleRatioY;
                     const sw = hqCropData.width * imageScaleRatioX, sh = hqCropData.height * imageScaleRatioY;
@@ -1807,6 +1823,7 @@
                 } else {
                     const src = activeImage || croppedCanvas; if (src) targetCtx.drawImage(src, imgX, imgY, imgWidth, imgHeight);
                 }
+                targetCtx.shadowColor = "transparent"; targetCtx.shadowBlur = 0; targetCtx.shadowOffsetY = 0;
             }
 
             if (paletteDrawEnabled) {
@@ -2003,7 +2020,7 @@
 
     function loadPresetList() {
         let loadedBgMode = userPresets.bgMode || "gradient";
-        if (loadedBgMode === 'pixel') loadedBgMode = 'tile'; // 下位互換用フォールバック
+        if (loadedBgMode === 'pixel') loadedBgMode = 'tile'; 
         presetSelect.innerHTML = '<option value="default">— デフォルト —</option>';
         for(let name in userPresets) { const opt = document.createElement('option'); opt.value = name; opt.textContent = name; presetSelect.appendChild(opt); }
     }
@@ -2024,6 +2041,9 @@
             sBorderC: paletteSlotBorderColor.value, sBorderW: paletteSlotBorderWidth.value,
             outerBorderColor: outerBorderColorSelect.value, outerBorderManualColor: outerBorderManualColor.value,
             paletteSort: paletteSortSelect.value, 
+            imgShadowOp: imageShadowOpacityRange.value,
+            imgShadowBlur: imageShadowBlurRange.value,
+            imgShadowOffsetY: imageShadowOffsetYRange.value,
             customTexts: [
                 { text: customTextInput1.value, chk: chkCustomText1.checked, vert: chkVert1.checked, x: textLayers.custom1.x, y: textLayers.custom1.y, size: sizeCustom1.value },
                 { text: customTextInput2.value, chk: chkCustomText2.checked, vert: chkVert2.checked, x: textLayers.custom2.x, y: textLayers.custom2.y, size: sizeCustom2.value },
@@ -2079,6 +2099,10 @@
         chkMarkerNumber.checked = d.markerNum ?? true;
         bgGradientAngleRange.value = d.bgAngle || 180; imageScaleRange.value = d.imgScale || 100;
         imageOffsetXRange.value = d.imgOffsetX || 0; imageOffsetYRange.value = d.imgOffsetY || 0; chkHideImage.checked = d.hideImg ?? false;
+        
+        imageShadowOpacityRange.value = d.imgShadowOp !== undefined ? d.imgShadowOp : 45;
+        imageShadowBlurRange.value = d.imgShadowBlur !== undefined ? d.imgShadowBlur : 80;
+        imageShadowOffsetYRange.value = d.imgShadowOffsetY !== undefined ? d.imgShadowOffsetY : 25;
         
         let loadedBgMode = d.bgMode || "gradient";
         if (loadedBgMode === 'pixel') loadedBgMode = 'tile';
