@@ -423,7 +423,7 @@
                         <label>背景モード:</label>
                         <select id="bgModeSelect" class="select-layout">
                             <option value="gradient" selected>グラデーション（パレット色）</option>
-                            <option value="pixel">ピクセル（モザイク）</option>
+                            <option value="tile">カラータイル（画像抽出）</option>
                             <option value="white">ホワイト</option>
                             <option value="black">ブラック</option>
                             <option value="dropper">スポイト / 任意指定</option>
@@ -442,7 +442,7 @@
                         <input type="range" id="bgGradientAngleRange" min="0" max="360" value="180">
                     </div>
                     <div class="control-row" id="densitySizeRow" style="display:none;">
-                        <label>ピクセルの大きさ:</label>
+                        <label>タイルの大きさ:</label>
                         <input type="range" id="densitySizeRange" min="10" max="80" value="35">
                     </div>
                     <button class="btn" id="bgShuffleBtn" style="width:100%; background: #475569; font-size:11px; padding:6px; margin-top:2px;">背景パターンを再生成 / 切替</button>
@@ -911,8 +911,8 @@
             items.forEach(item => { item.hsl = hexToHSL(item.color); });
             if (sortType === 'hue') items.sort((a, b) => a.hsl.h - b.hsl.h);
             if (sortType === 'saturation') items.sort((a, b) => b.hsl.s - a.hsl.s);
-            if (sortType === 'lightness') items.sort((a, b) => b.hsl.l - a.hsl.l); // 明るい順
-            if (sortType === 'darkness') items.sort((a, b) => a.hsl.l - b.hsl.l); // 暗い順 (追加)
+            if (sortType === 'lightness') items.sort((a, b) => b.hsl.l - a.hsl.l); 
+            if (sortType === 'darkness') items.sort((a, b) => a.hsl.l - b.hsl.l); 
         } else if (sortType === 'frequency') {
             let counts = getColorsFrequency(selectedColors, samplePixelData);
             items.forEach((item, idx) => { item.freq = counts[idx]; });
@@ -989,9 +989,9 @@
 
     bgModeSelect.addEventListener('change', () => {
         const m = bgModeSelect.value;
-        densitySizeRow.style.display = m === 'pixel' ? 'flex' : 'none';
+        densitySizeRow.style.display = m === 'tile' ? 'flex' : 'none';
         bgDropperRow.style.display = m === 'dropper' ? 'flex' : 'none';
-        bgGradientAngleRow.style.display = (m === 'gradient' || m === 'pixel') ? 'flex' : 'none';
+        bgGradientAngleRow.style.display = (m === 'gradient') ? 'flex' : 'none';
         if (m === 'none') { exportFormatSelect.value = 'png'; }
         requestBackgroundUpdate(); drawWorkspace(); updateSimulatorInfo();
     });
@@ -1567,15 +1567,46 @@
         }
     }
 
-    function drawMosaicBackground(targetCtx, width, height, blockSize, srcImage) {
-        if (!srcImage) return; if (blockSize < 1) blockSize = 1;
-        const cols = Math.ceil(width / blockSize); const rows = Math.ceil(height / blockSize);
-        const tempCanvas = document.createElement('canvas'); tempCanvas.width = cols; tempCanvas.height = rows; const tCtx = tempCanvas.getContext('2d');
-        const imgW = srcImage.width || srcImage.videoWidth || cols; const imgH = srcImage.height || srcImage.videoHeight || rows;
-        const scale = Math.max(cols / imgW, rows / imgH); const dw = imgW * scale; const dh = imgH * scale; const dx = (cols - dw) / 2; const dy = (rows - dh) / 2;
-        tCtx.drawImage(srcImage, dx, dy, dw, dh);
-        targetCtx.imageSmoothingEnabled = false; targetCtx.drawImage(tempCanvas, 0, 0, cols, rows, 0, 0, cols * blockSize, rows * blockSize);
-        targetCtx.imageSmoothingEnabled = true; targetCtx.fillStyle = 'rgba(0,0,0,0.15)'; targetCtx.fillRect(0, 0, width, height);
+    // ====== 新規追加：カラータイル背景描画ロジック ======
+    function drawColorTileBackground(targetCtx, width, height, blockSize) {
+        if (!samplePixelData) return;
+        const gap = Math.max(1, Math.round(blockSize * 0.15));
+        const tileSize = blockSize - gap;
+        
+        // タイルの隙間の色（ダークトーン）
+        targetCtx.fillStyle = '#1e1e1e';
+        targetCtx.fillRect(0, 0, width, height);
+
+        const cols = Math.ceil(width / blockSize);
+        const rows = Math.ceil(height / blockSize);
+        
+        // 画像から全カラーをサンプリングしてプールを作成
+        const d = samplePixelData.data;
+        let pool = [];
+        for(let i=0; i<d.length; i+=4) {
+            if(d[i+3] > 0) pool.push(`rgb(${d[i]},${d[i+1]},${d[i+2]})`);
+        }
+        if(pool.length === 0) pool = ['#888888'];
+
+        // 再現性のある疑似乱数（シャッフル用）
+        function prng(a, b) {
+            let n = Math.sin(a * 12.9898 + b * 78.233) * 43758.5453;
+            return n - Math.floor(n);
+        }
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const x = c * blockSize + gap / 2;
+                const y = r * blockSize + gap / 2;
+                
+                // gradientPatternIndexを利用してシャッフルを切り替え
+                const rand = prng(c + gradientPatternIndex * 100, r + gradientPatternIndex * 100);
+                const colorIdx = Math.floor(rand * pool.length);
+                
+                targetCtx.fillStyle = pool[colorIdx];
+                targetCtx.fillRect(x, y, tileSize, tileSize);
+            }
+        }
     }
 
     function drawBackground(targetCtx, w, h, srcImage) {
@@ -1584,9 +1615,10 @@
         if (mode === 'white') { targetCtx.fillStyle = '#ffffff'; targetCtx.fillRect(0, 0, w, h); return; }
         if (mode === 'black') { targetCtx.fillStyle = '#000000'; targetCtx.fillRect(0, 0, w, h); return; }
         if (mode === 'dropper') { targetCtx.fillStyle = bgManualColorInput.value; targetCtx.fillRect(0, 0, w, h); return; }
-        if (mode === 'pixel') {
-            const minCanvasDim = Math.min(w, h); const currentBlockSize = Math.round(minCanvasDim * (parseFloat(densitySizeRange.value) / 1000));
-            drawMosaicBackground(targetCtx, w, h, currentBlockSize, srcImage);
+        if (mode === 'tile') {
+            const minCanvasDim = Math.min(w, h); 
+            const currentBlockSize = Math.max(5, Math.round(minCanvasDim * (parseFloat(densitySizeRange.value) / 1000)));
+            drawColorTileBackground(targetCtx, w, h, currentBlockSize);
         } else {
             drawSmoothGradient(targetCtx, w, h, selectedColors);
         }
@@ -1970,6 +2002,8 @@
     }
 
     function loadPresetList() {
+        let loadedBgMode = userPresets.bgMode || "gradient";
+        if (loadedBgMode === 'pixel') loadedBgMode = 'tile'; // 下位互換用フォールバック
         presetSelect.innerHTML = '<option value="default">— デフォルト —</option>';
         for(let name in userPresets) { const opt = document.createElement('option'); opt.value = name; opt.textContent = name; presetSelect.appendChild(opt); }
     }
@@ -2045,11 +2079,16 @@
         chkMarkerNumber.checked = d.markerNum ?? true;
         bgGradientAngleRange.value = d.bgAngle || 180; imageScaleRange.value = d.imgScale || 100;
         imageOffsetXRange.value = d.imgOffsetX || 0; imageOffsetYRange.value = d.imgOffsetY || 0; chkHideImage.checked = d.hideImg ?? false;
-        bgModeSelect.value = d.bgMode || "gradient"; bgManualColorInput.value = d.bgManualColor || "#ffffff";
+        
+        let loadedBgMode = d.bgMode || "gradient";
+        if (loadedBgMode === 'pixel') loadedBgMode = 'tile';
+        bgModeSelect.value = loadedBgMode;
+        
+        bgManualColorInput.value = d.bgManualColor || "#ffffff";
         densitySizeRange.value = d.pSize || 35;
-        densitySizeRow.style.display = bgModeSelect.value === 'pixel' ? 'flex' : 'none';
+        densitySizeRow.style.display = bgModeSelect.value === 'tile' ? 'flex' : 'none';
         bgDropperRow.style.display = bgModeSelect.value === 'dropper' ? 'flex' : 'none';
-        bgGradientAngleRow.style.display = (bgModeSelect.value === 'gradient' || bgModeSelect.value === 'pixel') ? 'flex' : 'none';
+        bgGradientAngleRow.style.display = (bgModeSelect.value === 'gradient') ? 'flex' : 'none';
 
         if (d.cFont) {
             customFontSelect.value = d.cFont; customFontNameInput.value = d.cCustomFont || ""; customFontNameRow.style.display = d.cFont === 'custom' ? 'flex' : 'none'; currentCustomFont = d.cFont === 'custom' ? d.cCustomFont : d.cFont;
